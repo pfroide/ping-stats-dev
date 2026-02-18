@@ -34,7 +34,8 @@
   wrap.innerHTML = `
     <div class="g-grid" style="gap:10px; padding:10px;">
       <div class="g-row">
-        <input id="gSearch" class="g-input" placeholder="Rechercher un joueur..." />
+        <select id="gPlayer" class="g-select"><option value="">Joueur…</option></select>
+        <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
         <select id="gMode" class="g-select">
           <option value="segments">Segments</option>
           <option value="timeline">Timeline</option>
@@ -73,8 +74,6 @@
         </label>
       </div>
 
-      <div id="gSuggest" class="g-suggest" style="display:none"></div>
-
       <div class="g-row">
         <div id="gPills" class="g-pills"></div>
       </div>
@@ -88,7 +87,8 @@
   root.appendChild(wrap);
 
   const el = (id) => root.getElementById(id);
-  const $search = el('gSearch');
+  const $player = el('gPlayer');
+  const $clearPlayers = el('gClearPlayers');
   const $mode = el('gMode');
   const $metric = el('gMetric');
   const $scope = el('gScope');
@@ -99,7 +99,6 @@
   const $exportBtn = el('gExport');
   const $club = el('gClub');
   const $pills = el('gPills');
-  const $suggest = el('gSuggest');
   const $canvas = el('gCanvas');
   const $multi = el('gMulti');
   const $heat = el('gHeat');
@@ -151,49 +150,78 @@
 
   function esc(s){ return (''+s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+  async function fetchJSONCandidates(){
+    const candidates = [
+      new URL('site_data.json', document.baseURI).toString(),
+      './site_data.json',
+      'site_data.json',
+    ];
+    let last = null;
+    for (const url of candidates){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        const text = await r.text();
+        const data = JSON.parse(text);
+        return {data, url};
+      }catch(e){
+        last = {url, e};
+      }
+    }
+    throw last || new Error('fetch failed');
+  }
+
+  function fillPlayers(){
+    $player.innerHTML = '<option value="">Joueur…</option>';
+    $compare.innerHTML = '<option value="">Comparer: aucun</option>';
+    const entries = Object.entries(DATA.players || {}).map(([lic,p]) => [lic, p.name || lic]);
+    entries.sort((a,b)=> (a[1]||'').localeCompare(b[1]||'', 'fr', {sensitivity:'base'}));
+    for (const [lic,name] of entries){
+      const o=document.createElement('option');
+      o.value=lic;
+      o.textContent = `${name} (lic ${lic})`;
+      $player.appendChild(o);
+
+      const c=document.createElement('option');
+      c.value=lic;
+      c.textContent = `${name}`;
+      $compare.appendChild(c);
+    }
+    $info.textContent = 'Données chargées: ' + entries.length + ' joueurs';
+  }
+
   async function load(){
     try{
-      const r = await fetch('./site_data.json', {cache:'no-store'});
-      DATA = await r.json();
-      // fill compare select
-      const entries = Object.entries(DATA.players || {}).map(([lic,p]) => [lic, p.name || lic]);
-      entries.sort((a,b)=> (a[1]||'').localeCompare(b[1]||'', 'fr'));
-      for (const [lic,name] of entries){
-        const o=document.createElement('option'); o.value=lic; o.textContent = 'Comparer: '+name;
-        $compare.appendChild(o);
-      }
-      $info.textContent = 'Données chargées: '+entries.length+' joueurs';
-    }catch(e){
-      $info.textContent = 'Erreur chargement site_data.json';
-      console.error(e);
+      const res = await fetchJSONCandidates();
+      DATA = res.data;
+      fillPlayers();
+    }catch(err){
+      const url = err && err.url ? err.url : '';
+      const msg = err && err.e ? String(err.e) : String(err);
+      $info.textContent = `Erreur chargement site_data.json${url? ' ('+url+')':''}: ${msg}`;
+      console.error(err);
     }
   }
 
-  function suggest(q){
-    if(!DATA) return [];
-    q = (q||'').trim().toLowerCase();
-    if(q.length<2) return [];
-    const arr=[];
-    for(const [lic,p] of Object.entries(DATA.players||{})){
-      const name=(p.name||'').toLowerCase();
-      if(name.includes(q) || lic.includes(q)) arr.push([lic,p.name||lic]);
-      if(arr.length>=12) break;
+  // dropdown selection
+  $player.addEventListener('change', ()=>{
+    const lic = $player.value;
+    if(!lic) return;
+    if(!DATA || !DATA.players || !DATA.players[lic]) return;
+    if($mode.value === 'radar'){
+      selected = [lic];
+    } else {
+      if(!selected.includes(lic)) selected.push(lic);
+      if(selected.length>5) selected = selected.slice(-5);
     }
-    return arr;
-  }
+    renderPills();
+    render();
+  });
 
-  function renderSuggest(list){
-    if(!list.length){ $suggest.style.display='none'; $suggest.innerHTML=''; return; }
-    $suggest.style.display='block';
-    $suggest.innerHTML = list.map(([lic,name]) => `<button data-lic="${esc(lic)}">${esc(name)} <span class="g-muted">(${esc(lic)})</span></button>`).join('');
-  }
-
-  $suggest.addEventListener('click', (e)=>{
-    const b = e.target.closest('button[data-lic]');
-    if(!b) return;
-    addPlayer(b.getAttribute('data-lic'));
-    renderSuggest([]);
-    $search.value='';
+  $clearPlayers.addEventListener('click', ()=>{
+    selected = [];
+    renderPills();
+    render();
   });
 
   function addPlayer(lic){
@@ -648,7 +676,7 @@
     $info.textContent = `Mode ${mode} · métrique ${metric} · ${hasB ? 'comparaison' : 'joueurs'} ${who}`;
   }
 
-  $search.addEventListener('input', ()=>{ renderSuggest(suggest($search.value)); });
+  // No search box: player selection is handled via dropdown.
   $mode.addEventListener('change', ()=>{
     if($mode.value==='radar' && selected.length>1) selected = selected.slice(0,1);
     renderPills(); render();

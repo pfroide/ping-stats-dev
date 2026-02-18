@@ -43,7 +43,6 @@
           <option value="segments">Segments</option>
           <option value="timeline">Timeline</option>
           <option value="expected">Attendu vs Réel</option>
-          <option value="heatmap">Heatmap sets</option>
           <option value="radar">Radar profil</option>
         </select>
         <select id="gMetric" class="g-select"></select>
@@ -144,11 +143,11 @@
       ['expected_p','Probabilité attendue'],
     ],
     radar: [ ['radar','Radar'] ],
-    heatmap: [ ['heatmap','Heatmap'] ],
   };
 
   function setMetricOptions(){
     const mode = $mode.value;
+    const prev = $metric.value;
     $metric.innerHTML = '';
     const opts = METRICS[mode] || METRICS.segments;
     for (const [k,label] of opts){
@@ -156,7 +155,13 @@
       o.value = k; o.textContent = label;
       $metric.appendChild(o);
     }
-    if (mode==='radar' || mode==='heatmap') $metric.style.display = 'none';
+    // preserve previous selection if still available
+    if(prev){
+      for(const o of $metric.options){
+        if(o.value === prev){ $metric.value = prev; break; }
+      }
+    }
+    if (mode==='radar') $metric.style.display = 'none';
     else $metric.style.display = '';
   }
 
@@ -680,28 +685,7 @@
     return {labels, series: out};
   }
 
-  function renderHeatmap(scope, phase){
-    $heat.style.display='block';
-    $canvas.style.display='none';
-    const top = (DATA.meta && DATA.meta.top_scores) || [];
-    const rows = selected.map(lic => {
-      const p = DATA.players[lic];
-      const hm = p.heatmap || {};
-      return { lic, name: p.name||lic, hm };
-    });
-    if(!rows.length){ $heat.innerHTML=''; return; }
-    let html = '<table><thead><tr><th>Joueur</th>' + top.map(s=>`<th>${esc(s)}</th>`).join('') + '</tr></thead><tbody>';
-    for(const r of rows){
-      html += `<tr><td>${esc(r.name)}</td>`;
-      for(const s of top){
-        const v = r.hm[s] || 0;
-        html += `<td>${v}</td>`;
-      }
-      html += '</tr>';
-    }
-    html += '</tbody></table>';
-    $heat.innerHTML = html;
-  }
+  // Heatmap removed.
 
   function render(){
     if(!DATA){ return; }
@@ -730,19 +714,15 @@
       $club.disabled = false;
     }
 
-    if(mode==='heatmap'){
-      renderHeatmap($scope.value, $phase.value);
-      return;
-    }
-
     if(mode==='radar'){
       if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
+      const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
       const axes = (DATA.meta && DATA.meta.radar_axes) || [];
-      const a = DATA.players[aLic].radar && DATA.players[aLic].radar.norm;
+      const a = (DATA.players[aLic].radar && DATA.players[aLic].radar[phaseKey] && DATA.players[aLic].radar[phaseKey].norm) || null;
 
       let b = null;
-      if(hasB) b = DATA.players[bLic].radar && DATA.players[bLic].radar.norm;
-      const club = ($club.checked && DATA.club && DATA.club.radar && DATA.club.radar.norm) ? DATA.club.radar.norm : null;
+      if(hasB) b = (DATA.players[bLic].radar && DATA.players[bLic].radar[phaseKey] && DATA.players[bLic].radar[phaseKey].norm) || null;
+      const club = ($club.checked && DATA.club && DATA.club.radar && DATA.club.radar[phaseKey] && DATA.club.radar[phaseKey].norm) ? DATA.club.radar[phaseKey].norm : null;
 
       const aSeries = { label: DATA.players[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0) };
       let bSeries = null;
@@ -919,8 +899,14 @@
       }catch(e){ console.warn(e); }
     }
     if(view==='multiples' && $multi.style.display!=='none'){
+      // Browsers often block multiple immediate downloads; stagger them slightly.
       const canv = Array.from($multi.querySelectorAll('canvas'));
-      canv.forEach((cv,i)=> dl(cv, safe(`graph_${mode}_${i+1}_${stamp}`)));
+      canv.forEach((cv,i)=>{
+        const titleEl = cv.parentElement && cv.parentElement.querySelector('div');
+        const who = titleEl ? titleEl.textContent : `player_${i+1}`;
+        const fname = safe(`graph_${mode}_${who}_${stamp}`);
+        window.setTimeout(()=> dl(cv, fname), i*250);
+      });
     }else{
       dl($canvas, safe(`graph_${mode}_${stamp}`));
     }

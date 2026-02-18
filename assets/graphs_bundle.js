@@ -21,6 +21,9 @@
     .g-suggest button{ all:unset; display:block; width:100%; padding:10px 12px; cursor:pointer; }
     .g-suggest button:hover{ background:rgba(255,255,255,0.06); }
     .g-canvas{ width:100%; max-width:980px; height:420px; border:1px solid #263043; border-radius:14px; background:rgba(0,0,0,0.12); }
+    .g-tip{ position:relative; max-width:980px; margin:0 auto 8px; padding:10px 12px; border-radius:12px; background:rgba(0,0,0,0.72); color:rgba(240,243,249,0.95); font:12px system-ui; border:1px solid rgba(255,255,255,0.12); box-shadow:0 8px 22px rgba(0,0,0,0.35); }
+    .g-tip b{ font-weight:700; }
+    .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
     .g-grid{ display:grid; gap:6px; }
     .g-heat{ border:1px solid #263043; border-radius:14px; overflow:auto; max-width:980px; }
     table{ border-collapse:collapse; font-size:13px; }
@@ -44,6 +47,11 @@
           <option value="radar">Radar profil</option>
         </select>
         <select id="gMetric" class="g-select"></select>
+        <select id="gChartType" class="g-select">
+          <option value="auto">Type: auto</option>
+          <option value="line">Type: ligne</option>
+          <option value="bar">Type: barres</option>
+        </select>
         <select id="gScope" class="g-select">
           <option value="tous">Tous</option>
           <option value="indiv">Indiv</option>
@@ -78,6 +86,7 @@
         <div id="gPills" class="g-pills"></div>
       </div>
 
+      <div id="gTip" class="g-tip" style="display:none"></div>
       <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
       <div id="gMulti" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; max-width:980px;"></div>
       <div id="gHeat" class="g-heat" style="display:none"></div>
@@ -92,6 +101,7 @@
   const $mode = el('gMode');
   const $metric = el('gMetric');
   const $scope = el('gScope');
+  const $chartType = el('gChartType');
   const $phase = el('gPhase');
   const $compare = el('gCompare');
   const $view = el('gView');
@@ -99,12 +109,14 @@
   const $exportBtn = el('gExport');
   const $club = el('gClub');
   const $pills = el('gPills');
+  const $tip = el('gTip');
   const $canvas = el('gCanvas');
   const $multi = el('gMulti');
   const $heat = el('gHeat');
   const $info = el('gInfo');
   const ctx = $canvas.getContext('2d');
 
+  let LAST_RENDER = null;
   let DATA = null;
   let selected = []; // licences
 
@@ -261,6 +273,14 @@
 
   let CURRENT_METRIC_LABEL = '';
 
+  const BAR_METRICS = new Set(['wins','losses','matches','perfs','contres','victoires','defaites','total']);
+  function resolveChartType(metric){
+    const forced = ($chartType && $chartType.value) ? $chartType.value : 'auto';
+    if(forced !== 'auto') return forced;
+    if(BAR_METRICS.has(metric)) return 'bar';
+    return 'line';
+  }
+
   function fmtNum(v){
     if(v==null || !isFinite(v)) return '';
     const av = Math.abs(v);
@@ -378,6 +398,87 @@
       ctx.fillText(s.label, boxX+26, ly);
       ly += 16;
       if(ly>h-40) break;
+    }
+  }
+
+  function drawBar(labels, series){
+    const w=$canvas.width, h=$canvas.height;
+    const ctxB=$canvas.getContext('2d');
+    ctxB.clearRect(0,0,w,h);
+    if(!labels || !labels.length){ drawAxesBase(ctxB,w,h); return; }
+    const n=labels.length;
+
+    // compute y range (include 0)
+    let ymin=0, ymax=0;
+    for(const s of series){
+      for(const v of s.values){
+        if(v==null || !isFinite(v)) continue;
+        ymin = Math.min(ymin, v);
+        ymax = Math.max(ymax, v);
+      }
+    }
+    if(ymax===ymin){ ymax=ymin+1; }
+
+    const left=46, top=12, bottom=h-38, right=w-12;
+    const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
+    const y = (v)=> bottom - (bottom-top)*((v-ymin)/(ymax-ymin));
+
+    drawAxesBase(ctxB,w,h);
+    drawYAxis(ctxB,left,top,bottom,ymin,ymax);
+
+    // x labels
+    ctxB.fillStyle='rgba(154,164,178,0.9)';
+    ctxB.font='12px system-ui';
+    const step = Math.max(1, Math.floor(n/6));
+    for(let i=0;i<n;i+=step){
+      const t = (labels[i]||'');
+      ctxB.fillText(t.length>14? (t.slice(0,14)+'…') : t, x(i)-12, h-24);
+    }
+
+    const k = Math.max(1, series.length);
+    const groupW = Math.max(10, Math.min(54, (right-left)/(n*1.25)));
+    const barW = Math.max(6, Math.floor((groupW-6)/k));
+    const baseY = y(0);
+
+    for(let i=0;i<n;i++){
+      const gx = x(i) - (groupW/2);
+      for(let j=0;j<series.length;j++){
+        const s=series[j];
+        const v=s.values[i];
+        if(v==null || !isFinite(v)) continue;
+        const hue = hashHue(s.label);
+        ctxB.fillStyle = `hsla(${hue}, 80%, 65%, 0.78)`;
+        const bx = gx + 3 + j*barW;
+        const yv = y(v);
+        const bh = Math.abs(baseY - yv);
+        const by = v>=0 ? yv : baseY;
+        ctxB.fillRect(bx, by, barW-2, Math.max(1,bh));
+
+        // value label
+        ctxB.fillStyle = `hsla(${hue}, 80%, 70%, 0.95)`;
+        ctxB.font='600 11px system-ui';
+        ctxB.fillText(fmtNum(v), bx, (v>=0? by-4 : by+bh+12));
+      }
+    }
+
+    // legend
+    ctxB.font='12px system-ui';
+    const boxX = w-250;
+    const boxY = 22;
+    const boxW = 238;
+    const boxH = Math.min(18 + series.length*16, h-70);
+    ctxB.fillStyle='rgba(0,0,0,0.35)';
+    ctxB.fillRect(boxX, boxY-16, boxW, boxH);
+    ctxB.fillStyle='rgba(230,233,239,0.9)';
+    let ly=boxY;
+    for(const s of series){
+      const hue = hashHue(s.label);
+      ctxB.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
+      ctxB.fillRect(boxX+10, ly-10, 10, 10);
+      ctxB.fillStyle='rgba(230,233,239,0.9)';
+      ctxB.fillText(s.label.length>28? (s.label.slice(0,28)+'…') : s.label, boxX+26, ly);
+      ly += 16;
+      if(ly > boxY-16+boxH-8) break;
     }
   }
 
@@ -738,7 +839,10 @@
     // overlay (default)
     clearCanvas();
     drawAxes();
-    drawLine(bundle.labels, bundle.series);
+    const ct = resolveChartType(metric);
+    if(ct==='bar') drawBar(bundle.labels, bundle.series);
+    else drawLine(bundle.labels, bundle.series);
+    LAST_RENDER = {labels: bundle.labels, series: bundle.series, type: ct, metricLabel: CURRENT_METRIC_LABEL};
     const who = hasB ? `${(DATA.players[aLic].name||aLic)} vs ${(DATA.players[bLic].name||bLic)}` : `${selected.length}`;
     $info.textContent = `Mode ${mode} · métrique ${metric} · ${hasB ? 'comparaison' : 'joueurs'} ${who}`;
   }
@@ -748,7 +852,43 @@
     if($mode.value==='radar' && selected.length>1) selected = selected.slice(0,1);
     renderPills(); render();
   });
-  $metric.addEventListener('change', render);
+  function hideTip(){ if($tip) $tip.style.display='none'; }
+
+  function showTipAt(clientX, clientY){
+    if(!$tip || !LAST_RENDER || !LAST_RENDER.labels || !LAST_RENDER.labels.length) return;
+    const rect = $canvas.getBoundingClientRect();
+    const px = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const left=46, right=rect.width-12;
+    const n = LAST_RENDER.labels.length;
+    const t = (px - left) / Math.max(1,(right-left));
+    let idx = Math.round(t * (n-1));
+    idx = Math.max(0, Math.min(n-1, idx));
+    const label = LAST_RENDER.labels[idx] || '';
+    let html = `<div><b>${esc(label)}</b></div>`;
+    html += `<div class="g-muted">${esc(LAST_RENDER.metricLabel||'')}</div>`;
+    let any=false;
+    html += `<div style="margin-top:6px">`;
+    for(const s of LAST_RENDER.series){
+      const v = s.values[idx];
+      if(v==null || !isFinite(v)) continue;
+      any=true;
+      html += `<div>${esc(s.label)}: <b>${esc(fmtNum(v))}</b></div>`;
+    }
+    html += `</div>`;
+    if(!any) html += `<div class="g-muted" style="margin-top:6px">Aucune valeur à cet endroit</div>`;
+    $tip.innerHTML = html;
+    $tip.style.display='block';
+  }
+
+  $canvas.addEventListener('pointerdown', (e)=>{
+    showTipAt(e.clientX, e.clientY);
+    window.clearTimeout(window.__gTipT);
+    window.__gTipT = window.setTimeout(hideTip, 3500);
+  });
+  $canvas.addEventListener('pointerleave', hideTip);
+
+  $metric.addEventListener('change', ()=>{ render(); hideTip(); });
+  $chartType.addEventListener('change', ()=>{ render(); hideTip(); });
   $scope.addEventListener('change', render);
   $phase.addEventListener('change', render);
   $view.addEventListener('change', render);

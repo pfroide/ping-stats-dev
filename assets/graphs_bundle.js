@@ -20,7 +20,7 @@
     .g-suggest{ border:1px solid #263043; border-radius:12px; overflow:hidden; background:rgba(18,24,38,0.96); }
     .g-suggest button{ all:unset; display:block; width:100%; padding:10px 12px; cursor:pointer; }
     .g-suggest button:hover{ background:rgba(255,255,255,0.06); }
-    .g-canvas{ width:100%; max-width:980px; height:280px; border:1px solid #263043; border-radius:14px; background:rgba(0,0,0,0.12); }
+    .g-canvas{ width:100%; max-width:980px; height:420px; border:1px solid #263043; border-radius:14px; background:rgba(0,0,0,0.12); }
     .g-grid{ display:grid; gap:6px; }
     .g-heat{ border:1px solid #263043; border-radius:14px; overflow:auto; max-width:980px; }
     table{ border-collapse:collapse; font-size:13px; }
@@ -78,7 +78,7 @@
         <div id="gPills" class="g-pills"></div>
       </div>
 
-      <canvas id="gCanvas" class="g-canvas" width="980" height="280"></canvas>
+      <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
       <div id="gMulti" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; max-width:980px;"></div>
       <div id="gHeat" class="g-heat" style="display:none"></div>
       <div class="g-muted" id="gInfo"></div>
@@ -259,19 +259,59 @@
     ctx.fillStyle = 'rgba(0,0,0,0)';
   }
 
+  let CURRENT_METRIC_LABEL = '';
+
+  function fmtNum(v){
+    if(v==null || !isFinite(v)) return '';
+    const av = Math.abs(v);
+    if(av >= 100) return String(Math.round(v));
+    if(av >= 10) return v.toFixed(1);
+    return v.toFixed(2);
+  }
+
+  function drawAxesBase(ctxX, w, h){
+    ctxX.strokeStyle = 'rgba(154,164,178,0.25)';
+    ctxX.lineWidth = 1;
+    ctxX.beginPath();
+    ctxX.moveTo(46,12); ctxX.lineTo(46,h-38);
+    ctxX.lineTo(w-12,h-38);
+    ctxX.stroke();
+    // title
+    if(CURRENT_METRIC_LABEL){
+      ctxX.fillStyle='rgba(230,233,239,0.92)';
+      ctxX.font='600 14px system-ui';
+      ctxX.fillText(CURRENT_METRIC_LABEL, 54, 18);
+    }
+  }
+
+  function drawYAxis(ctxX, left, top, bottom, ymin, ymax){
+    const ticks = 5;
+    ctxX.font='12px system-ui';
+    ctxX.fillStyle='rgba(154,164,178,0.9)';
+    ctxX.strokeStyle='rgba(154,164,178,0.12)';
+    ctxX.lineWidth=1;
+    for(let t=0;t<=ticks;t++){
+      const f = t/ticks;
+      const v = ymax - (ymax-ymin)*f;
+      const yy = top + (bottom-top)*f;
+      // grid
+      ctxX.beginPath();
+      ctxX.moveTo(left, yy);
+      ctxX.lineTo(ctxX.canvas.width-12, yy);
+      ctxX.stroke();
+      // label
+      ctxX.fillText(fmtNum(v), 6, yy+4);
+    }
+  }
+
   function drawAxes(){
     const w=$canvas.width, h=$canvas.height;
-    ctx.strokeStyle = 'rgba(154,164,178,0.25)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(40,10); ctx.lineTo(40,h-30);
-    ctx.lineTo(w-10,h-30);
-    ctx.stroke();
+    drawAxesBase(ctx, w, h);
   }
 
   function drawLine(labels, series){
     const w=$canvas.width, h=$canvas.height;
-    const left=50, top=16, right=w-12, bottom=h-40;
+    const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     const min = all.length? Math.min(...all):0;
@@ -282,12 +322,16 @@
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
+    // y axis ticks + grid
+    drawYAxis(ctx, left, top, bottom, ymin, ymax);
+
     // x labels (sparse)
     ctx.fillStyle='rgba(154,164,178,0.9)';
     ctx.font='12px system-ui';
     const step = Math.max(1, Math.floor(n/6));
     for(let i=0;i<n;i+=step){
-      ctx.fillText(labels[i]||'', x(i)-10, h-18);
+      const t = (labels[i]||'');
+      ctx.fillText(t.length>14? (t.slice(0,14)+'…') : t, x(i)-12, h-24);
     }
 
     // draw each series with different hue via hash
@@ -297,25 +341,41 @@
       ctx.lineWidth = 2;
       ctx.beginPath();
       let started=false;
+      let lastIdx=-1; let lastX=0; let lastY=0; let lastV=null;
       for(let i=0;i<n;i++){
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
         const xx=x(i), yy=y(v);
         if(!started){ ctx.moveTo(xx,yy); started=true; }
         else ctx.lineTo(xx,yy);
+        lastIdx=i; lastX=xx; lastY=yy; lastV=v;
       }
       ctx.stroke();
+
+      // endpoint value
+      if(lastIdx>=0){
+        ctx.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
+        ctx.font='600 12px system-ui';
+        ctx.fillText(fmtNum(lastV), Math.min(lastX+6, w-80), lastY-6);
+      }
     }
 
-    // legend
+    // legend (clearer)
+    ctx.font='12px system-ui';
+    const boxX = w-250;
+    const boxY = 22;
+    const boxW = 238;
+    const boxH = Math.min(18 + series.length*16, h-70);
+    ctx.fillStyle='rgba(0,0,0,0.35)';
+    ctx.fillRect(boxX, boxY-16, boxW, boxH);
     ctx.fillStyle='rgba(230,233,239,0.9)';
-    let ly=18;
+    let ly=boxY;
     for(const s of series){
       const hue=hashHue(s.label);
       ctx.fillStyle=`hsla(${hue}, 80%, 65%, 0.9)`;
-      ctx.fillRect(w-180, ly-10, 10, 10);
+      ctx.fillRect(boxX+10, ly-10, 10, 10);
       ctx.fillStyle='rgba(230,233,239,0.9)';
-      ctx.fillText(s.label, w-165, ly);
+      ctx.fillText(s.label, boxX+26, ly);
       ly += 16;
       if(ly>h-40) break;
     }
@@ -327,15 +387,9 @@
     const w=canvas.width, h=canvas.height;
     // clear
     ctx2.clearRect(0,0,w,h);
-    // axes
-    ctx2.strokeStyle = 'rgba(154,164,178,0.25)';
-    ctx2.lineWidth = 1;
-    ctx2.beginPath();
-    ctx2.moveTo(40,10); ctx2.lineTo(40,h-30);
-    ctx2.lineTo(w-10,h-30);
-    ctx2.stroke();
+    drawAxesBase(ctx2, w, h);
 
-    const left=50, top=16, right=w-12, bottom=h-40;
+    const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     const min = all.length? Math.min(...all):0;
@@ -346,13 +400,16 @@
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
+    // y ticks
+    drawYAxis(ctx2, left, top, bottom, ymin, ymax);
+
     // x labels sparse
     ctx2.fillStyle='rgba(154,164,178,0.9)';
     ctx2.font='11px system-ui';
     const step = Math.max(1, Math.floor(n/4));
     for(let i=0;i<n;i+=step){
       const t = labels[i]||'';
-      ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-10, h-18);
+      ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
     }
 
     for(const s of series){
@@ -361,26 +418,35 @@
       ctx2.lineWidth = 2;
       ctx2.beginPath();
       let started=false;
+      let lastIdx=-1; let lastX=0; let lastY=0; let lastV=null;
       for(let i=0;i<n;i++){
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
         const xx=x(i), yy=y(v);
         if(!started){ ctx2.moveTo(xx,yy); started=true; }
         else ctx2.lineTo(xx,yy);
+        lastIdx=i; lastX=xx; lastY=yy; lastV=v;
       }
       ctx2.stroke();
+      if(lastIdx>=0){
+        ctx2.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
+        ctx2.font='600 11px system-ui';
+        ctx2.fillText(fmtNum(lastV), Math.min(lastX+6, w-60), lastY-6);
+      }
     }
 
     // tiny legend
+    ctx2.fillStyle='rgba(0,0,0,0.35)';
+    ctx2.fillRect(w-170, 6, 160, Math.min(14 + series.length*14, h-70));
     ctx2.fillStyle='rgba(230,233,239,0.9)';
-    ctx2.font='12px system-ui';
+    ctx2.font='11px system-ui';
     let ly=18;
     for(const s of series){
       const hue=hashHue(s.label);
       ctx2.fillStyle=`hsla(${hue}, 80%, 65%, 0.9)`;
-      ctx2.fillRect(w-140, ly-10, 10, 10);
+      ctx2.fillRect(w-160, ly-10, 10, 10);
       ctx2.fillStyle='rgba(230,233,239,0.9)';
-      ctx2.fillText(s.label.length>16? (s.label.slice(0,16)+'…') : s.label, w-125, ly);
+      ctx2.fillText(s.label.length>16? (s.label.slice(0,16)+'…') : s.label, w-145, ly);
       ly += 14;
       if(ly>h-40) break;
     }
@@ -591,6 +657,7 @@
 
     // line modes: segments/timeline/expected
     const metric = $metric.value;
+    try{ CURRENT_METRIC_LABEL = ($metric.options[$metric.selectedIndex] && $metric.options[$metric.selectedIndex].textContent) ? $metric.options[$metric.selectedIndex].textContent : metric; }catch(e){ CURRENT_METRIC_LABEL = metric; }
     const scope = $scope.value;
     const phase = $phase.value;
 

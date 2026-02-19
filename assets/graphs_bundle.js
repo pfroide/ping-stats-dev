@@ -69,7 +69,7 @@
           <option value="segments">Segments</option>
           <option value="timeline">Timeline</option>
           <option value="expected">Attendu vs Réel</option>
-          <option value="radar">Radar profil</option>
+          <option value="radar">Kiviat profil</option>
         </select>
         <select id="gView" class="g-select">
           <option value="overlay">Vue: superposée</option>
@@ -202,7 +202,7 @@
       ['overperf_cum','Surperf cumulée'],
       ['expected_p','Probabilité attendue'],
     ],
-    radar: [ ['radar','Radar'] ],
+    radar: [ ['radar','Kiviat'] ],
   };
 
   const SIMPLE_KEYS = {
@@ -443,13 +443,24 @@
     // y axis ticks + grid
     drawYAxis(ctx, left, top, bottom, ymin, ymax);
 
-    // x labels (sparse)
+    // x labels (sparse + rotated on dense charts)
     ctx.fillStyle='rgba(154,164,178,0.9)';
     ctx.font='12px system-ui';
-    const step = Math.max(1, Math.floor(n/6));
+    let step = Math.max(1, Math.floor(n/6));
+    if(n>18) step = Math.max(step, Math.floor(n/4));
+    const rotate = n>10;
     for(let i=0;i<n;i+=step){
-      const t = cleanXLabel(labels[i]||'');
-      ctx.fillText(t.length>14? (t.slice(0,14)+'…') : t, x(i)-12, h-24);
+      const t0 = cleanXLabel(labels[i]||'');
+      const t = t0.length>14? (t0.slice(0,14)+'…') : t0;
+      if(!rotate){
+        ctx.fillText(t, x(i)-12, h-24);
+      }else{
+        ctx.save();
+        ctx.translate(x(i)-6, h-26);
+        ctx.rotate(-0.55);
+        ctx.fillText(t, 0, 0);
+        ctx.restore();
+      }
     }
 
     // draw each series
@@ -492,9 +503,14 @@
       if(lastIdx>=0){
         const idxs = [];
         const pushUniq = (i)=>{ if(i!=null && i>=0 && !idxs.includes(i)) idxs.push(i); };
-        pushUniq(firstIdx);
-        pushUniq(lastIdx);
-        if(n>=8){ pushUniq(maxIdx); pushUniq(minIdx); }
+        // On dense charts, show fewer numbers (otherwise it's unreadable)
+        if(n>22){
+          pushUniq(lastIdx);
+        }else{
+          pushUniq(firstIdx);
+          pushUniq(lastIdx);
+          if(n>=8){ pushUniq(maxIdx); pushUniq(minIdx); }
+        }
         for(const i of idxs.slice(0,4)){
           const v=s.values[i];
           if(v==null || !isFinite(v)) continue;
@@ -531,13 +547,24 @@
     drawAxesBase(ctxB,w,h);
     drawYAxis(ctxB,left,top,bottom,ymin,ymax);
 
-    // x labels
+    // x labels (sparse + rotated on dense charts)
     ctxB.fillStyle='rgba(154,164,178,0.9)';
     ctxB.font='12px system-ui';
-    const step = Math.max(1, Math.floor(n/6));
+    let step = Math.max(1, Math.floor(n/6));
+    if(n>18) step = Math.max(step, Math.floor(n/4));
+    const rotate = n>10;
     for(let i=0;i<n;i+=step){
-      const t = cleanXLabel(labels[i]||'');
-      ctxB.fillText(t.length>14? (t.slice(0,14)+'…') : t, x(i)-12, h-24);
+      const t0 = cleanXLabel(labels[i]||'');
+      const t = t0.length>14? (t0.slice(0,14)+'…') : t0;
+      if(!rotate){
+        ctxB.fillText(t, x(i)-12, h-24);
+      }else{
+        ctxB.save();
+        ctxB.translate(x(i)-6, h-26);
+        ctxB.rotate(-0.55);
+        ctxB.fillText(t, 0, 0);
+        ctxB.restore();
+      }
     }
 
     const k = Math.max(1, series.length);
@@ -571,17 +598,22 @@
   }
 
   // Small, mobile-friendly transition when changing metric/scope/phase (overlay view)
+  let __animToken = 0;
   function tweenTo(target, durationMs){
     const prev = LAST_RENDER;
     if(!prev || !prev.labels || !target || !target.labels) return null;
     if(prev.type !== target.type) return null;
+    // Avoid animating very dense charts (mobile readability + performance)
+    if((target.labels||[]).length > 40) return null;
     if(prev.labels.length !== target.labels.length) return null;
     if((prev.series||[]).length !== (target.series||[]).length) return null;
     for(let i=0;i<prev.labels.length;i++) if(prev.labels[i] !== target.labels[i]) return null;
     for(let i=0;i<prev.series.length;i++) if((prev.series[i].label||'') !== (target.series[i].label||'')) return null;
 
     const t0 = performance.now();
+    const myToken = ++__animToken;
     function step(now){
+      if(myToken !== __animToken) return; // cancelled by a newer render
       const f = Math.min(1, (now - t0) / durationMs);
       const series = target.series.map((s, si)=>{
         const a = prev.series[si].values;
@@ -594,6 +626,9 @@
         });
         return { label: s.label, values: vals };
       });
+      // IMPORTANT: clear + redraw axes each frame, otherwise we get "spaghetti" overlays.
+      clearCanvas();
+      drawAxes();
       if(target.type==='bar') drawBar(target.labels, series);
       else drawLine(target.labels, series);
       if(f<1) requestAnimationFrame(step);
@@ -918,10 +953,10 @@
       }else if(club){
         bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0), color: COLOR_CLUB };
       }
-      setTitleText(`Radar profil — ${phaseLbl}`);
+      setTitleText(`Kiviat profil — ${phaseLbl}`);
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
       drawRadar(aSeries, bSeries, axes);
-      $info.textContent = 'Radar: A vs ' + (bSeries? bSeries.label : '—');
+      $info.textContent = 'Kiviat: A vs ' + (bSeries? bSeries.label : '—');
       requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
       return;
     }
@@ -1087,7 +1122,7 @@
       const cv = (Craw && Craw[k]!=null && isFinite(Craw[k])) ? fmtNum(Craw[k]) : null;
 
       let html = `<div><b>${esc(lbl)}</b></div>`;
-      html += `<div class="g-muted">Radar profil · ${esc(phaseLbl)}</div>`;
+      html += `<div class="g-muted">Kiviat profil · ${esc(phaseLbl)}</div>`;
       html += `<div style="margin-top:6px">`;
       html += `<div><b>${esc(Aname)}:</b> ${esc(av)}</div>`;
       if(bv!=null) html += `<div><b>${esc(Bname)}:</b> ${esc(bv)}</div>`;

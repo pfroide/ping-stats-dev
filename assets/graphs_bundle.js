@@ -20,15 +20,39 @@
     .g-suggest{ border:1px solid #263043; border-radius:12px; overflow:hidden; background:rgba(18,24,38,0.96); }
     .g-suggest button{ all:unset; display:block; width:100%; padding:10px 12px; cursor:pointer; }
     .g-suggest button:hover{ background:rgba(255,255,255,0.06); }
+    .g-title{ max-width:980px; margin:6px auto 6px; font-weight:800; letter-spacing:0.2px; font-size:14px; color:rgba(230,233,239,0.95); }
     .g-canvas{ width:100%; max-width:980px; height:420px; border:1px solid #263043; border-radius:14px; background:rgba(0,0,0,0.12); }
     .g-tip{ position:relative; max-width:980px; margin:0 auto 8px; padding:10px 12px; border-radius:12px; background:rgba(0,0,0,0.72); color:rgba(240,243,249,0.95); font:12px system-ui; border:1px solid rgba(255,255,255,0.12); box-shadow:0 8px 22px rgba(0,0,0,0.35); }
     .g-tip b{ font-weight:700; }
     .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
+    .g-legend{ display:flex; flex-wrap:wrap; gap:8px; max-width:980px; margin:8px auto 0; }
+    .g-legend .it{ display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); font-size:12px; }
+    .g-legend .sw{ width:10px; height:10px; border-radius:3px; }
+    .g-more{ display:flex; }
+    .g-more.is-collapsed{ display:none; }
     .g-grid{ display:grid; gap:6px; }
     .g-heat{ border:1px solid #263043; border-radius:14px; overflow:auto; max-width:980px; }
     table{ border-collapse:collapse; font-size:13px; }
     th,td{ border-bottom:1px solid #263043; padding:8px 10px; white-space:nowrap; }
     th{ position:sticky; top:0; background:rgba(18,24,38,0.98); color:#9aa4b2; text-align:left; }
+
+    @media (max-width: 560px){
+      .g-canvas{ height:520px; }
+      .g-input,.g-select,.g-btn{ padding:12px 12px; font-size:14px; }
+      .g-title{ font-size:15px; }
+      .g-tip{ font:13px system-ui; padding:12px 12px; }
+      /* default: keep advanced filters collapsed */
+      .g-more{ display:none; }
+      .g-more.is-open{ display:flex; }
+    }
+
+    /* Focus mode (mobile-first fullscreen) */
+    .g-card.g-focus{ position:fixed; inset:0; z-index:9999; margin:0; border-radius:0; border:none; background:#0b1220; }
+    .g-card.g-focus .g-row{ padding:4px 10px; }
+    .g-card.g-focus .g-more{ display:none !important; }
+    .g-card.g-focus .g-title{ margin-top:8px; }
+    .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:62vh; }
+    .g-card.g-focus .g-legend{ max-width:none; }
   `;
   root.appendChild(style);
 
@@ -36,15 +60,46 @@
   wrap.className = 'g-card';
   wrap.innerHTML = `
     <div class="g-grid" style="gap:10px; padding:10px;">
-      <div class="g-row">
+      <div class="g-row" id="gControlsRow">
         <select id="gPlayer" class="g-select"><option value="">Joueur…</option></select>
-        <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
+        <select id="gCompare" class="g-select">
+          <option value="">Comparer: aucun</option>
+        </select>
         <select id="gMode" class="g-select">
           <option value="segments">Segments</option>
           <option value="timeline">Timeline</option>
           <option value="expected">Attendu vs Réel</option>
           <option value="radar">Radar profil</option>
         </select>
+        <select id="gView" class="g-select">
+          <option value="overlay">Vue: superposée</option>
+          <option value="multiples">Vue: mini-graphs</option>
+        </select>
+        <select id="gUxMode" class="g-select">
+          <option value="simple">Vue: simple</option>
+          <option value="expert">Vue: expert</option>
+        </select>
+        <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
+        <button id="gToggleFilters" class="g-btn" type="button">⚙ Filtres</button>
+        <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
+        <label class="g-pill" style="cursor:default">
+          <input id="gDelta" type="checkbox" />
+          <small>Δ A−B</small>
+        </label>
+        <button id="gExport" class="g-btn" type="button">Export PNG</button>
+
+        <label class="g-pill" style="cursor:default">
+          <input id="gClub" type="checkbox" />
+          <small>Club</small>
+        </label>
+      </div>
+
+      <div class="g-row" id="gFocusBar" style="display:none; justify-content:space-between; align-items:center; gap:10px; padding:0 2px;">
+        <div id="gFocusTitle" style="font-weight:800; color:rgba(230,233,239,0.95); font-size:14px;">Graphiques</div>
+        <button id="gFocusClose" class="g-btn" type="button">✕ Quitter</button>
+      </div>
+
+      <div class="g-row g-more" id="gMoreFilters">
         <select id="gMetric" class="g-select"></select>
         <select id="gChartType" class="g-select">
           <option value="auto">Type: auto</option>
@@ -61,34 +116,17 @@
           <option value="1">Phase 1</option>
           <option value="2">Phase 2</option>
         </select>
-        <select id="gCompare" class="g-select">
-          <option value="">Comparer: aucun</option>
-        </select>
-
-        <select id="gView" class="g-select">
-          <option value="overlay">Vue: superposée</option>
-          <option value="multiples">Vue: mini-graphs</option>
-        </select>
-        <label class="g-pill" style="cursor:default">
-          <input id="gDelta" type="checkbox" />
-          <small>Δ A−B</small>
-        </label>
-        <button id="gExport" class="g-btn" type="button">Export PNG</button>
-
-        <label class="g-pill" style="cursor:default">
-          <input id="gClub" type="checkbox" />
-          <small>Club</small>
-        </label>
       </div>
 
       <div class="g-row">
         <div id="gPills" class="g-pills"></div>
       </div>
 
+      <div class="g-title" id="gTitle"></div>
       <div id="gTip" class="g-tip" style="display:none"></div>
       <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
+      <div id="gLegend" class="g-legend"></div>
       <div id="gMulti" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; max-width:980px;"></div>
-      <div id="gHeat" class="g-heat" style="display:none"></div>
       <div class="g-muted" id="gInfo"></div>
     </div>
   `;
@@ -104,14 +142,23 @@
   const $phase = el('gPhase');
   const $compare = el('gCompare');
   const $view = el('gView');
+  const $uxMode = el('gUxMode');
+  const $controlsRow = el('gControlsRow');
+  const $focus = el('gFocus');
+  const $focusBar = el('gFocusBar');
+  const $focusClose = el('gFocusClose');
+  const $focusTitle = el('gFocusTitle');
+  const $toggleFilters = el('gToggleFilters');
+  const $moreFilters = el('gMoreFilters');
   const $delta = el('gDelta');
   const $exportBtn = el('gExport');
   const $club = el('gClub');
   const $pills = el('gPills');
+  const $title = el('gTitle');
   const $tip = el('gTip');
   const $canvas = el('gCanvas');
+  const $legend = el('gLegend');
   const $multi = el('gMulti');
-  const $heat = el('gHeat');
   const $info = el('gInfo');
   const ctx = $canvas.getContext('2d');
 
@@ -149,11 +196,22 @@
     radar: [ ['radar','Radar'] ],
   };
 
+  const SIMPLE_KEYS = {
+    segments: new Set(['win_rate','matches','wins','losses','perfs','contres','pointres_total','pointres_mean','overperf']),
+    timeline: new Set(['pointres','pointres_cum','perfs_cum','contres_cum','points_est','overperf_cum']),
+    expected: new Set(['overperf_cum','expected_p']),
+    radar: new Set(['radar']),
+  };
+
   function setMetricOptions(){
     const mode = $mode.value;
     const prev = $metric.value;
     $metric.innerHTML = '';
-    const opts = METRICS[mode] || METRICS.segments;
+    let opts = METRICS[mode] || METRICS.segments;
+    if($uxMode && $uxMode.value==='simple'){
+      const keep = SIMPLE_KEYS[mode] || SIMPLE_KEYS.segments;
+      opts = opts.filter(([k,_]) => keep.has(k));
+    }
     for (const [k,label] of opts){
       const o = document.createElement('option');
       o.value = k; o.textContent = label;
@@ -298,6 +356,26 @@
     return v.toFixed(2);
   }
 
+  function cleanXLabel(s){
+    return (s||'').replace(/\s*#.*$/,'').trim();
+  }
+
+  function setTitleText(t){
+    if(!$title) return;
+    $title.textContent = t || '';
+    if($focusTitle && wrap.classList.contains('g-focus')) $focusTitle.textContent = $title.textContent;
+  }
+
+  function renderLegend(series){
+    if(!$legend) return;
+    if(!series || !series.length){ $legend.innerHTML=''; return; }
+    $legend.innerHTML = series.map(s=>{
+      const hue = hashHue(s.label);
+      const col = `hsla(${hue}, 80%, 65%, 0.95)`;
+      return `<span class="it"><span class="sw" style="background:${col}"></span>${esc(s.label)}</span>`;
+    }).join('');
+  }
+
   function drawAxesBase(ctxX, w, h){
     ctxX.strokeStyle = 'rgba(154,164,178,0.25)';
     ctxX.lineWidth = 1;
@@ -305,16 +383,11 @@
     ctxX.moveTo(46,12); ctxX.lineTo(46,h-38);
     ctxX.lineTo(w-12,h-38);
     ctxX.stroke();
-    // title
-    if(CURRENT_METRIC_LABEL){
-      ctxX.fillStyle='rgba(230,233,239,0.92)';
-      ctxX.font='600 14px system-ui';
-      ctxX.fillText(CURRENT_METRIC_LABEL, 54, 18);
-    }
+    // title moved to HTML (better on mobile)
   }
 
   function drawYAxis(ctxX, left, top, bottom, ymin, ymax){
-    const ticks = 5;
+    const ticks = 4;
     ctxX.font='12px system-ui';
     ctxX.fillStyle='rgba(154,164,178,0.9)';
     ctxX.strokeStyle='rgba(154,164,178,0.12)';
@@ -359,7 +432,7 @@
     ctx.font='12px system-ui';
     const step = Math.max(1, Math.floor(n/6));
     for(let i=0;i<n;i+=step){
-      const t = (labels[i]||'');
+      const t = cleanXLabel(labels[i]||'');
       ctx.fillText(t.length>14? (t.slice(0,14)+'…') : t, x(i)-12, h-24);
     }
 
@@ -367,7 +440,7 @@
     for(const s of series){
       const hue = hashHue(s.label);
       ctx.strokeStyle = `hsla(${hue}, 80%, 65%, 0.9)`;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3.5;
       ctx.beginPath();
       let started=false;
       let firstIdx=-1; let firstX=0; let firstY=0; let firstV=null;
@@ -409,25 +482,7 @@
       }
     }
 
-    // legend (clearer)
-    ctx.font='12px system-ui';
-    const boxX = w-250;
-    const boxY = 22;
-    const boxW = 238;
-    const boxH = Math.min(18 + series.length*16, h-70);
-    ctx.fillStyle='rgba(0,0,0,0.35)';
-    ctx.fillRect(boxX, boxY-16, boxW, boxH);
-    ctx.fillStyle='rgba(230,233,239,0.9)';
-    let ly=boxY;
-    for(const s of series){
-      const hue=hashHue(s.label);
-      ctx.fillStyle=`hsla(${hue}, 80%, 65%, 0.9)`;
-      ctx.fillRect(boxX+10, ly-10, 10, 10);
-      ctx.fillStyle='rgba(230,233,239,0.9)';
-      ctx.fillText(s.label, boxX+26, ly);
-      ly += 16;
-      if(ly>h-40) break;
-    }
+    // Legend is now rendered in HTML below the canvas (better on mobile).
   }
 
   function drawBar(labels, series){
@@ -460,7 +515,7 @@
     ctxB.font='12px system-ui';
     const step = Math.max(1, Math.floor(n/6));
     for(let i=0;i<n;i+=step){
-      const t = (labels[i]||'');
+      const t = cleanXLabel(labels[i]||'');
       ctxB.fillText(t.length>14? (t.slice(0,14)+'…') : t, x(i)-12, h-24);
     }
 
@@ -490,25 +545,39 @@
       }
     }
 
-    // legend
-    ctxB.font='12px system-ui';
-    const boxX = w-250;
-    const boxY = 22;
-    const boxW = 238;
-    const boxH = Math.min(18 + series.length*16, h-70);
-    ctxB.fillStyle='rgba(0,0,0,0.35)';
-    ctxB.fillRect(boxX, boxY-16, boxW, boxH);
-    ctxB.fillStyle='rgba(230,233,239,0.9)';
-    let ly=boxY;
-    for(const s of series){
-      const hue = hashHue(s.label);
-      ctxB.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
-      ctxB.fillRect(boxX+10, ly-10, 10, 10);
-      ctxB.fillStyle='rgba(230,233,239,0.9)';
-      ctxB.fillText(s.label.length>28? (s.label.slice(0,28)+'…') : s.label, boxX+26, ly);
-      ly += 16;
-      if(ly > boxY-16+boxH-8) break;
+    // Legend is now rendered in HTML below the canvas (better on mobile).
+  }
+
+  // Small, mobile-friendly transition when changing metric/scope/phase (overlay view)
+  function tweenTo(target, durationMs){
+    const prev = LAST_RENDER;
+    if(!prev || !prev.labels || !target || !target.labels) return null;
+    if(prev.type !== target.type) return null;
+    if(prev.labels.length !== target.labels.length) return null;
+    if((prev.series||[]).length !== (target.series||[]).length) return null;
+    for(let i=0;i<prev.labels.length;i++) if(prev.labels[i] !== target.labels[i]) return null;
+    for(let i=0;i<prev.series.length;i++) if((prev.series[i].label||'') !== (target.series[i].label||'')) return null;
+
+    const t0 = performance.now();
+    function step(now){
+      const f = Math.min(1, (now - t0) / durationMs);
+      const series = target.series.map((s, si)=>{
+        const a = prev.series[si].values;
+        const b = s.values;
+        const vals = b.map((bv, i)=>{
+          const av = a[i];
+          if(bv==null || !isFinite(bv)) return null;
+          if(av==null || !isFinite(av)) return bv;
+          return av + (bv-av)*f;
+        });
+        return { label: s.label, values: vals };
+      });
+      if(target.type==='bar') drawBar(target.labels, series);
+      else drawLine(target.labels, series);
+      if(f<1) requestAnimationFrame(step);
     }
+    requestAnimationFrame(step);
+    return true;
   }
 
 
@@ -538,14 +607,14 @@
     ctx2.font='11px system-ui';
     const step = Math.max(1, Math.floor(n/4));
     for(let i=0;i<n;i+=step){
-      const t = labels[i]||'';
+      const t = cleanXLabel(labels[i]||'');
       ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
     }
 
     for(const s of series){
       const hue = hashHue(s.label);
       ctx2.strokeStyle = `hsla(${hue}, 80%, 65%, 0.9)`;
-      ctx2.lineWidth = 2;
+      ctx2.lineWidth = 3;
       ctx2.beginPath();
       let started=false;
       let firstIdx=-1; let firstV=null;
@@ -583,21 +652,7 @@
       }
     }
 
-    // tiny legend
-    ctx2.fillStyle='rgba(0,0,0,0.35)';
-    ctx2.fillRect(w-170, 6, 160, Math.min(14 + series.length*14, h-70));
-    ctx2.fillStyle='rgba(230,233,239,0.9)';
-    ctx2.font='11px system-ui';
-    let ly=18;
-    for(const s of series){
-      const hue=hashHue(s.label);
-      ctx2.fillStyle=`hsla(${hue}, 80%, 65%, 0.9)`;
-      ctx2.fillRect(w-160, ly-10, 10, 10);
-      ctx2.fillStyle='rgba(230,233,239,0.9)';
-      ctx2.fillText(s.label.length>16? (s.label.slice(0,16)+'…') : s.label, w-145, ly);
-      ly += 14;
-      if(ly>h-40) break;
-    }
+    // legend removed for mini graphs (title already shows the player; club overlay is optional)
   }
 
   function drawBarOn(canvas, labels, series){
@@ -629,7 +684,7 @@
     ctx2.font='11px system-ui';
     const step = Math.max(1, Math.floor(n/4));
     for(let i=0;i<n;i+=step){
-      const t = labels[i]||'';
+      const t = cleanXLabel(labels[i]||'');
       ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
     }
 
@@ -669,11 +724,11 @@
 
   function drawRadar(a, b, axes){
     const w=$canvas.width, h=$canvas.height;
-    const cx=w/2, cy=h/2+10;
-    const R=Math.min(w,h)*0.32;
+    const cx=w/2, cy=h/2+12;
+    const R=Math.min(w,h)*0.38;
     ctx.clearRect(0,0,w,h);
     // rings
-    ctx.strokeStyle='rgba(154,164,178,0.25)';
+    ctx.strokeStyle='rgba(154,164,178,0.32)';
     for(let k=1;k<=4;k++){
       ctx.beginPath();
       ctx.arc(cx,cy,R*(k/4),0,Math.PI*2);
@@ -686,20 +741,24 @@
       return [cx + rr*Math.cos(ang), cy + rr*Math.sin(ang)];
     }
     // spokes + labels
-    ctx.fillStyle='rgba(154,164,178,0.9)';
-    ctx.font='12px system-ui';
+    ctx.fillStyle='rgba(154,164,178,0.92)';
+    ctx.font='13px system-ui';
     for(let i=0;i<n;i++){
       const ang=-Math.PI/2+(Math.PI*2)*(i/n);
       const x=cx+R*Math.cos(ang), y=cy+R*Math.sin(ang);
       ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.stroke();
       const lbl=axes[i].label;
-      ctx.fillText(lbl, x + (x>cx?6:-60), y + (y>cy?14:-4));
+      const pad = 8;
+      const tw = ctx.measureText(lbl).width;
+      const tx = x + (x>cx ? pad : -(tw+pad));
+      const ty = y + (y>cy ? 16 : -6);
+      ctx.fillText(lbl, tx, ty);
     }
     function poly(vals, label){
       const hue=hashHue(label);
       ctx.strokeStyle=`hsla(${hue}, 80%, 65%, 0.95)`;
       ctx.fillStyle=`hsla(${hue}, 80%, 65%, 0.18)`;
-      ctx.lineWidth=2;
+      ctx.lineWidth=3;
       ctx.beginPath();
       for(let i=0;i<n;i++){
         const v=vals[i] ?? 0;
@@ -713,19 +772,7 @@
     if(a) poly(a.values, a.label);
     if(b) poly(b.values, b.label);
 
-    // legend
-    ctx.fillStyle='rgba(230,233,239,0.9)';
-    ctx.font='13px system-ui';
-    let y=20;
-    for(const s of [a,b]){
-      if(!s) continue;
-      const hue=hashHue(s.label);
-      ctx.fillStyle=`hsla(${hue}, 80%, 65%, 0.9)`;
-      ctx.fillRect(w-180, y-10, 10, 10);
-      ctx.fillStyle='rgba(230,233,239,0.9)';
-      ctx.fillText(s.label, w-165, y);
-      y+=16;
-    }
+    // Legend moved to HTML below the canvas.
   }
 
   function segmentLabels(scope, phase, lics){
@@ -803,9 +850,9 @@
     setMetricOptions();
 
     // default visibility
-    $heat.style.display = 'none';
     $multi.style.display = 'none';
     $canvas.style.display = 'block';
+    if($legend) $legend.innerHTML = '';
 
     // view controls enabled only on line modes
     const isLineMode = (mode==='segments' || mode==='timeline' || mode==='expected');
@@ -827,6 +874,7 @@
     if(mode==='radar'){
       if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
       const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
+      const phaseLbl = ($phase.value==='all') ? 'Toutes phases' : ('Phase ' + $phase.value);
       const axes = (DATA.meta && DATA.meta.radar_axes) || [];
       const a = (DATA.players[aLic].radar && DATA.players[aLic].radar[phaseKey] && DATA.players[aLic].radar[phaseKey].norm) || null;
 
@@ -841,6 +889,8 @@
       }else if(club){
         bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0) };
       }
+      setTitleText(`Radar profil — ${phaseLbl}`);
+      renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
       drawRadar(aSeries, bSeries, axes);
       $info.textContent = 'Radar: A vs ' + (bSeries? bSeries.label : '—');
       return;
@@ -851,6 +901,8 @@
     try{ CURRENT_METRIC_LABEL = ($metric.options[$metric.selectedIndex] && $metric.options[$metric.selectedIndex].textContent) ? $metric.options[$metric.selectedIndex].textContent : metric; }catch(e){ CURRENT_METRIC_LABEL = metric; }
     const scope = $scope.value;
     const phase = $phase.value;
+    const scopeLbl = (scope==='tous') ? 'Tous matchs' : (scope==='indiv' ? 'Indiv' : 'Équipe');
+    const phaseLbl = (phase==='all') ? 'Toutes phases' : ('Phase ' + phase);
 
     // build lics list
     let lics = selected.slice();
@@ -884,6 +936,8 @@
       $canvas.style.display = 'none';
       $multi.style.display = 'grid';
       $multi.innerHTML = '';
+      setTitleText(`${CURRENT_METRIC_LABEL||metric} — ${phaseLbl} — ${scopeLbl}`);
+      if($legend) $legend.innerHTML = '';
       const toDraw = hasB ? [aLic, bLic] : selected.slice();
       const ctMulti = resolveChartType(metric);
       for(const lic of toDraw){
@@ -932,9 +986,14 @@
     clearCanvas();
     drawAxes();
     const ct = resolveChartType(metric);
-    if(ct==='bar') drawBar(bundle.labels, bundle.series);
-    else drawLine(bundle.labels, bundle.series);
-    LAST_RENDER = {labels: bundle.labels, matchIds: (bundle.matchIds||null), series: bundle.series, type: ct, metricLabel: CURRENT_METRIC_LABEL};
+    const target = {labels: bundle.labels, matchIds: (bundle.matchIds||null), series: bundle.series, type: ct, metricLabel: CURRENT_METRIC_LABEL};
+    setTitleText(`${CURRENT_METRIC_LABEL||metric} — ${phaseLbl} — ${scopeLbl}`);
+    renderLegend(bundle.series);
+    if(!tweenTo(target, 220)){
+      if(ct==='bar') drawBar(bundle.labels, bundle.series);
+      else drawLine(bundle.labels, bundle.series);
+    }
+    LAST_RENDER = target;
     const who = hasB ? `${(DATA.players[aLic].name||aLic)} vs ${(DATA.players[bLic].name||bLic)}` : `${selected.length}`;
     $info.textContent = `Mode ${mode} · métrique ${metric} · ${hasB ? 'comparaison' : 'joueurs'} ${who}`;
   }
@@ -959,23 +1018,37 @@
       const Araw = (((DATA.players[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
       const Braw = bLic ? ((((DATA.players[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
       const Craw = ($club.checked && DATA.club && DATA.club.radar && DATA.club.radar[phaseKey]) ? (DATA.club.radar[phaseKey].raw||{}) : null;
-      let html = `<div><b>Radar profil</b></div>`;
-      html += `<div class="g-muted">${esc(($phase.value==='all') ? 'Toutes phases' : ('Phase '+$phase.value))}</div>`;
-      html += `<div style="margin-top:6px">`;
+      // Determine closest axis from tap position
+      const rect = $canvas.getBoundingClientRect();
+      const sx = (clientX - rect.left) * ($canvas.width / rect.width);
+      const sy = (clientY - rect.top) * ($canvas.height / rect.height);
+      const cx = $canvas.width/2;
+      const cy = $canvas.height/2+12;
+      const dx = sx - cx;
+      const dy = sy - cy;
+      const ang = Math.atan2(dy, dx);
+      const twoPi = Math.PI*2;
+      const n = Math.max(1, axes.length);
+      const a0 = (ang + Math.PI/2 + twoPi) % twoPi; // 0 at top
+      let idx = Math.round((a0 / twoPi) * n) % n;
+      idx = Math.max(0, Math.min(n-1, idx));
+      const ax = axes[idx] || axes[0];
+
       const Aname = (DATA.players[aLic] && DATA.players[aLic].name) ? DATA.players[aLic].name : aLic;
       const Bname = (bLic && DATA.players[bLic] && DATA.players[bLic].name) ? DATA.players[bLic].name : (bLic||'');
-      for(const ax of axes){
-        const k = ax.key;
-        const lbl = ax.label;
-        const av = (Araw[k]!=null && isFinite(Araw[k])) ? fmtNum(Araw[k]) : '—';
-        const bv = (Braw && Braw[k]!=null && isFinite(Braw[k])) ? fmtNum(Braw[k]) : null;
-        const cv = (Craw && Craw[k]!=null && isFinite(Craw[k])) ? fmtNum(Craw[k]) : null;
-        let line = `<div><span class="g-muted">${esc(lbl)}</span> — <b>${esc(Aname)}:</b> ${esc(av)}`;
-        if(bv!=null) line += ` · <b>${esc(Bname)}:</b> ${esc(bv)}`;
-        if(cv!=null) line += ` · <b>Club:</b> ${esc(cv)}`;
-        line += `</div>`;
-        html += line;
-      }
+      const phaseLbl = ($phase.value==='all') ? 'Toutes phases' : ('Phase '+$phase.value);
+      const k = ax.key;
+      const lbl = ax.label;
+      const av = (Araw[k]!=null && isFinite(Araw[k])) ? fmtNum(Araw[k]) : '—';
+      const bv = (Braw && Braw[k]!=null && isFinite(Braw[k])) ? fmtNum(Braw[k]) : null;
+      const cv = (Craw && Craw[k]!=null && isFinite(Craw[k])) ? fmtNum(Craw[k]) : null;
+
+      let html = `<div><b>${esc(lbl)}</b></div>`;
+      html += `<div class="g-muted">Radar profil · ${esc(phaseLbl)}</div>`;
+      html += `<div style="margin-top:6px">`;
+      html += `<div><b>${esc(Aname)}:</b> ${esc(av)}</div>`;
+      if(bv!=null) html += `<div><b>${esc(Bname)}:</b> ${esc(bv)}</div>`;
+      if(cv!=null) html += `<div><b>Club:</b> ${esc(cv)}</div>`;
       html += `</div>`;
       $tip.innerHTML = html;
       $tip.style.display='block';
@@ -1022,6 +1095,58 @@
     window.__gTipT = window.setTimeout(hideTip, 3500);
   });
   $canvas.addEventListener('pointerleave', hideTip);
+
+  // Mobile UX: collapsible advanced filters
+  let _filtersOpen = false;
+  function syncFiltersPanel(){
+    if(!$moreFilters) return;
+    const isMobile = window.matchMedia('(max-width: 560px)').matches;
+    if(isMobile){
+      $moreFilters.classList.toggle('is-open', _filtersOpen);
+    }else{
+      // Always visible on desktop
+      $moreFilters.classList.remove('is-open');
+      $moreFilters.style.display = 'flex';
+    }
+  }
+  if($toggleFilters){
+    $toggleFilters.addEventListener('click', ()=>{
+      _filtersOpen = !_filtersOpen;
+      syncFiltersPanel();
+    });
+  }
+  window.addEventListener('resize', syncFiltersPanel);
+  // initial
+  syncFiltersPanel();
+
+  // UX mode (simple/expert)
+  if($uxMode){
+    const isMobile = window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
+    $uxMode.value = isMobile ? 'simple' : 'expert';
+    $uxMode.addEventListener('change', ()=>{ setMetricOptions(); render(); hideTip(); });
+  }
+
+  // Focus mode (fullscreen)
+  let _isFocus = false;
+  function setFocus(on){
+    _isFocus = !!on;
+    if(_isFocus){
+      wrap.classList.add('g-focus');
+      if($controlsRow) $controlsRow.style.display='none';
+      if($focusBar) $focusBar.style.display='flex';
+      if($focusTitle) $focusTitle.textContent = $title ? $title.textContent : 'Graphiques';
+      document.documentElement.style.overflow='hidden';
+      document.body.style.overflow='hidden';
+    }else{
+      wrap.classList.remove('g-focus');
+      if($controlsRow) $controlsRow.style.display='flex';
+      if($focusBar) $focusBar.style.display='none';
+      document.documentElement.style.overflow='';
+      document.body.style.overflow='';
+    }
+  }
+  if($focus) $focus.addEventListener('click', ()=> setFocus(!_isFocus));
+  if($focusClose) $focusClose.addEventListener('click', ()=> setFocus(false));
 
   $metric.addEventListener('change', ()=>{ render(); hideTip(); });
   $chartType.addEventListener('change', ()=>{ render(); hideTip(); });

@@ -125,6 +125,8 @@
       ['matches','Matchs'],
       ['wins','Victoires'],
       ['losses','Défaites'],
+      ['perfs','Perfs'],
+      ['contres','Contres'],
       ['overperf','Surperf'],
       ['pointres_total','Points FFTT total'],
       ['pointres_mean','Points FFTT moyen'],
@@ -134,6 +136,8 @@
     timeline: [
       ['pointres','Points FFTT'],
       ['pointres_cum','Points FFTT cumulés'],
+      ['perfs_cum','Perfs cumulées'],
+      ['contres_cum','Contres cumulées'],
       ['points_est','Points estimés'],
       ['overperf_cum','Surperf cumulée'],
       ['diff_pts','Diff pts'],
@@ -596,6 +600,67 @@
     }
   }
 
+  function drawBarOn(canvas, labels, series){
+    const ctx2 = canvas.getContext('2d');
+    const w=canvas.width, h=canvas.height;
+    ctx2.clearRect(0,0,w,h);
+    drawAxesBase(ctx2, w, h);
+    if(!labels || !labels.length) return;
+
+    const left=54, top=26, right=w-12, bottom=h-54;
+    const n=labels.length;
+
+    // y range include 0
+    let ymin=0, ymax=0;
+    for(const s of series){
+      for(const v of s.values){
+        if(v==null || !isFinite(v)) continue;
+        ymin = Math.min(ymin, v);
+        ymax = Math.max(ymax, v);
+      }
+    }
+    if(ymax===ymin) ymax = ymin + 1;
+    const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
+    const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
+    drawYAxis(ctx2, left, top, bottom, ymin, ymax);
+
+    // x labels sparse
+    ctx2.fillStyle='rgba(154,164,178,0.9)';
+    ctx2.font='11px system-ui';
+    const step = Math.max(1, Math.floor(n/4));
+    for(let i=0;i<n;i+=step){
+      const t = labels[i]||'';
+      ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
+    }
+
+    const k = Math.max(1, series.length);
+    const groupW = Math.max(10, Math.min(44, (right-left)/(n*1.25)));
+    const barW = Math.max(6, Math.floor((groupW-6)/k));
+    const baseY = y(0);
+
+    for(let i=0;i<n;i++){
+      const gx = x(i) - (groupW/2);
+      for(let j=0;j<series.length;j++){
+        const s=series[j];
+        const v=s.values[i];
+        if(v==null || !isFinite(v)) continue;
+        const hue = hashHue(s.label);
+        ctx2.fillStyle = `hsla(${hue}, 80%, 65%, 0.78)`;
+        const bx = gx + 3 + j*barW;
+        const yv = y(v);
+        const bh = Math.abs(baseY - yv);
+        const by = v>=0 ? yv : baseY;
+        ctx2.fillRect(bx, by, barW-2, Math.max(1,bh));
+        // value label (few only to avoid clutter)
+        if(n<=10 || i===0 || i===n-1){
+          ctx2.fillStyle = `hsla(${hue}, 80%, 70%, 0.95)`;
+          ctx2.font='600 11px system-ui';
+          ctx2.fillText(fmtNum(v), bx, (v>=0? by-4 : by+bh+12));
+        }
+      }
+    }
+  }
+
   function hashHue(s){
     let h=0;
     for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))>>>0;
@@ -710,7 +775,13 @@
     // labels from first selected
     const baseArr = (DATA.players[lic].timeline && DATA.players[lic].timeline[scope]) || [];
     const filteredBase = baseArr.filter(x => phase==='all' || (''+x.phase)==phase);
-    const labels = filteredBase.map(x => (x.date||''));
+    const clean = (t)=>{
+      if(!t) return '';
+      const s = String(t);
+      const i = s.indexOf('#');
+      return (i>=0 ? s.slice(0,i) : s).trim();
+    };
+    const labels = filteredBase.map(x => clean(x.date||''));
     const matchIds = filteredBase.map(x => (x.match_id!=null ? String(x.match_id) : ''));
 
     for(const l of lics){
@@ -814,6 +885,7 @@
       $multi.style.display = 'grid';
       $multi.innerHTML = '';
       const toDraw = hasB ? [aLic, bLic] : selected.slice();
+      const ctMulti = resolveChartType(metric);
       for(const lic of toDraw){
         if(!lic || !DATA.players[lic]) continue;
         const name = DATA.players[lic].name || lic;
@@ -849,7 +921,8 @@
             // timeline club not supported (kept off)
           }
         }
-        drawChartOn(cv, b2.labels, b2.series);
+        if(ctMulti==='bar') drawBarOn(cv, b2.labels, b2.series);
+        else drawChartOn(cv, b2.labels, b2.series);
       }
       $info.textContent = `Mode ${mode} · vue mini-graphs · métrique ${metric} · joueurs ${toDraw.filter(Boolean).length}`;
       return;

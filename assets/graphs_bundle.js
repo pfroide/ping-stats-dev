@@ -126,14 +126,14 @@
       ['wins','Victoires'],
       ['losses','Défaites'],
       ['overperf','Surperf'],
-      ['pointres_total','Pointres total'],
-      ['pointres_mean','Pointres moyen'],
+      ['pointres_total','Points FFTT total'],
+      ['pointres_mean','Points FFTT moyen'],
       ['diff_sets','Diff sets'],
       ['opp_pts_mean','Difficulté'],
     ],
     timeline: [
-      ['pointres','Pointres'],
-      ['pointres_cum','Pointres cumulés'],
+      ['pointres','Points FFTT'],
+      ['pointres_cum','Points FFTT cumulés'],
       ['points_est','Points estimés'],
       ['overperf_cum','Surperf cumulée'],
       ['diff_pts','Diff pts'],
@@ -366,22 +366,42 @@
       ctx.lineWidth = 2;
       ctx.beginPath();
       let started=false;
+      let firstIdx=-1; let firstX=0; let firstY=0; let firstV=null;
       let lastIdx=-1; let lastX=0; let lastY=0; let lastV=null;
+      let maxIdx=-1; let maxV=-Infinity;
+      let minIdx=-1; let minV=Infinity;
       for(let i=0;i<n;i++){
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
         const xx=x(i), yy=y(v);
         if(!started){ ctx.moveTo(xx,yy); started=true; }
         else ctx.lineTo(xx,yy);
+        if(firstIdx<0){ firstIdx=i; firstX=xx; firstY=yy; firstV=v; }
+        if(v>maxV){ maxV=v; maxIdx=i; }
+        if(v<minV){ minV=v; minIdx=i; }
         lastIdx=i; lastX=xx; lastY=yy; lastV=v;
       }
       ctx.stroke();
 
-      // endpoint value
-      if(lastIdx>=0){
+      // value labels: a few key points (not everywhere)
+      const drawVal = (xx, yy, v, alignRight)=>{
         ctx.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
         ctx.font='600 12px system-ui';
-        ctx.fillText(fmtNum(lastV), Math.min(lastX+6, w-80), lastY-6);
+        const dx = alignRight ? -6 : 6;
+        const tx = Math.max(10, Math.min(w-80, xx+dx));
+        ctx.fillText(fmtNum(v), tx, yy-6);
+      };
+      if(lastIdx>=0){
+        const idxs = [];
+        const pushUniq = (i)=>{ if(i!=null && i>=0 && !idxs.includes(i)) idxs.push(i); };
+        pushUniq(firstIdx);
+        pushUniq(lastIdx);
+        if(n>=8){ pushUniq(maxIdx); pushUniq(minIdx); }
+        for(const i of idxs.slice(0,4)){
+          const v=s.values[i];
+          if(v==null || !isFinite(v)) continue;
+          drawVal(x(i), y(v), v, i>n-3);
+        }
       }
     }
 
@@ -524,20 +544,38 @@
       ctx2.lineWidth = 2;
       ctx2.beginPath();
       let started=false;
+      let firstIdx=-1; let firstV=null;
       let lastIdx=-1; let lastX=0; let lastY=0; let lastV=null;
+      let maxIdx=-1; let maxV=-Infinity;
+      let minIdx=-1; let minV=Infinity;
       for(let i=0;i<n;i++){
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
         const xx=x(i), yy=y(v);
         if(!started){ ctx2.moveTo(xx,yy); started=true; }
         else ctx2.lineTo(xx,yy);
+        if(firstIdx<0){ firstIdx=i; firstV=v; }
+        if(v>maxV){ maxV=v; maxIdx=i; }
+        if(v<minV){ minV=v; minIdx=i; }
         lastIdx=i; lastX=xx; lastY=yy; lastV=v;
       }
       ctx2.stroke();
+
+      // value labels: key points only (start/end/min/max), cap to 3 for mini graphs
       if(lastIdx>=0){
+        const idxs=[];
+        const pushUniq=(i)=>{ if(i!=null && i>=0 && !idxs.includes(i)) idxs.push(i); };
+        pushUniq(firstIdx);
+        pushUniq(lastIdx);
+        if(n>=8){ pushUniq(maxIdx); pushUniq(minIdx); }
         ctx2.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
         ctx2.font='600 11px system-ui';
-        ctx2.fillText(fmtNum(lastV), Math.min(lastX+6, w-60), lastY-6);
+        for(const i of idxs.slice(0,3)){
+          const v=s.values[i];
+          if(v==null || !isFinite(v)) continue;
+          const xx=x(i), yy=y(v);
+          ctx2.fillText(fmtNum(v), Math.min(xx+6, w-60), yy-6);
+        }
       }
     }
 
@@ -672,7 +710,8 @@
     // labels from first selected
     const baseArr = (DATA.players[lic].timeline && DATA.players[lic].timeline[scope]) || [];
     const filteredBase = baseArr.filter(x => phase==='all' || (''+x.phase)==phase);
-    const labels = filteredBase.map(x => (x.date||'') + (x.match_id?(' #'+x.match_id):''));
+    const labels = filteredBase.map(x => (x.date||''));
+    const matchIds = filteredBase.map(x => (x.match_id!=null ? String(x.match_id) : ''));
 
     for(const l of lics){
       const arr = ((DATA.players[l].timeline && DATA.players[l].timeline[scope]) || []).filter(x => phase==='all' || (''+x.phase)==phase);
@@ -682,7 +721,7 @@
       });
       out.push({ label: DATA.players[l].name || l, values: vals });
     }
-    return {labels, series: out};
+    return {labels, matchIds, series: out};
   }
 
   // Heatmap removed.
@@ -822,7 +861,7 @@
     const ct = resolveChartType(metric);
     if(ct==='bar') drawBar(bundle.labels, bundle.series);
     else drawLine(bundle.labels, bundle.series);
-    LAST_RENDER = {labels: bundle.labels, series: bundle.series, type: ct, metricLabel: CURRENT_METRIC_LABEL};
+    LAST_RENDER = {labels: bundle.labels, matchIds: (bundle.matchIds||null), series: bundle.series, type: ct, metricLabel: CURRENT_METRIC_LABEL};
     const who = hasB ? `${(DATA.players[aLic].name||aLic)} vs ${(DATA.players[bLic].name||bLic)}` : `${selected.length}`;
     $info.textContent = `Mode ${mode} · métrique ${metric} · ${hasB ? 'comparaison' : 'joueurs'} ${who}`;
   }
@@ -835,7 +874,42 @@
   function hideTip(){ if($tip) $tip.style.display='none'; }
 
   function showTipAt(clientX, clientY){
-    if(!$tip || !LAST_RENDER || !LAST_RENDER.labels || !LAST_RENDER.labels.length) return;
+    if(!$tip) return;
+
+    // Special case: radar (no X index). Show axis values for selected players/club.
+    if($mode.value==='radar'){
+      if(!DATA || !selected.length) return;
+      const aLic = selected[0];
+      const bLic = $compare.value || null;
+      const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
+      const axes = (DATA.meta && DATA.meta.radar_axes) || [];
+      const Araw = (((DATA.players[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
+      const Braw = bLic ? ((((DATA.players[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
+      const Craw = ($club.checked && DATA.club && DATA.club.radar && DATA.club.radar[phaseKey]) ? (DATA.club.radar[phaseKey].raw||{}) : null;
+      let html = `<div><b>Radar profil</b></div>`;
+      html += `<div class="g-muted">${esc(($phase.value==='all') ? 'Toutes phases' : ('Phase '+$phase.value))}</div>`;
+      html += `<div style="margin-top:6px">`;
+      const Aname = (DATA.players[aLic] && DATA.players[aLic].name) ? DATA.players[aLic].name : aLic;
+      const Bname = (bLic && DATA.players[bLic] && DATA.players[bLic].name) ? DATA.players[bLic].name : (bLic||'');
+      for(const ax of axes){
+        const k = ax.key;
+        const lbl = ax.label;
+        const av = (Araw[k]!=null && isFinite(Araw[k])) ? fmtNum(Araw[k]) : '—';
+        const bv = (Braw && Braw[k]!=null && isFinite(Braw[k])) ? fmtNum(Braw[k]) : null;
+        const cv = (Craw && Craw[k]!=null && isFinite(Craw[k])) ? fmtNum(Craw[k]) : null;
+        let line = `<div><span class="g-muted">${esc(lbl)}</span> — <b>${esc(Aname)}:</b> ${esc(av)}`;
+        if(bv!=null) line += ` · <b>${esc(Bname)}:</b> ${esc(bv)}`;
+        if(cv!=null) line += ` · <b>Club:</b> ${esc(cv)}`;
+        line += `</div>`;
+        html += line;
+      }
+      html += `</div>`;
+      $tip.innerHTML = html;
+      $tip.style.display='block';
+      return;
+    }
+
+    if(!LAST_RENDER || !LAST_RENDER.labels || !LAST_RENDER.labels.length) return;
     const rect = $canvas.getBoundingClientRect();
     const px = Math.max(0, Math.min(rect.width, clientX - rect.left));
     const left=46, right=rect.width-12;
@@ -844,8 +918,17 @@
     let idx = Math.round(t * (n-1));
     idx = Math.max(0, Math.min(n-1, idx));
     const label = LAST_RENDER.labels[idx] || '';
+    const mid = (LAST_RENDER.matchIds && LAST_RENDER.matchIds[idx]) ? String(LAST_RENDER.matchIds[idx]) : '';
+    // Compute metric label live (avoid stale title when switching views/modes)
+    let metricLbl = '';
+    try{
+      metricLbl = ($metric && $metric.style.display!=='none' && $metric.options[$metric.selectedIndex]) ? ($metric.options[$metric.selectedIndex].textContent||'') : '';
+    }catch(e){ metricLbl=''; }
+    metricLbl = metricLbl || (LAST_RENDER.metricLabel||'');
+
     let html = `<div><b>${esc(label)}</b></div>`;
-    html += `<div class="g-muted">${esc(LAST_RENDER.metricLabel||'')}</div>`;
+    if(mid) html += `<div class="g-muted">Match #${esc(mid)}</div>`;
+    html += `<div class="g-muted">${esc(metricLbl||'')}</div>`;
     let any=false;
     html += `<div style="margin-top:6px">`;
     for(const s of LAST_RENDER.series){

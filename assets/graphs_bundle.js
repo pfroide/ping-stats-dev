@@ -20,18 +20,18 @@
     .g-suggest{ border:1px solid #263043; border-radius:12px; overflow:hidden; background:rgba(18,24,38,0.96); }
     .g-suggest button{ all:unset; display:block; width:100%; padding:10px 12px; cursor:pointer; }
     .g-suggest button:hover{ background:rgba(255,255,255,0.06); }
-    .g-title{ max-width:980px; margin:6px auto 6px; font-weight:800; letter-spacing:0.2px; font-size:14px; color:rgba(230,233,239,0.95); }
-    .g-canvas{ width:100%; max-width:980px; height:420px; border:1px solid #263043; border-radius:14px; background:rgba(0,0,0,0.12); }
-    .g-tip{ position:relative; max-width:980px; margin:0 auto 8px; padding:10px 12px; border-radius:12px; background:rgba(0,0,0,0.72); color:rgba(240,243,249,0.95); font:12px system-ui; border:1px solid rgba(255,255,255,0.12); box-shadow:0 8px 22px rgba(0,0,0,0.35); }
+    .g-title{ width:100%; margin:6px 0 6px; font-weight:800; letter-spacing:0.2px; font-size:14px; color:rgba(230,233,239,0.95); text-align:center; }
+    .g-canvas{ width:100%; height:420px; border:1px solid #263043; border-radius:14px; background:rgba(0,0,0,0.12); display:block; }
+    .g-tip{ position:relative; width:100%; margin:0 0 8px; padding:10px 12px; border-radius:12px; background:rgba(0,0,0,0.72); color:rgba(240,243,249,0.95); font:12px system-ui; border:1px solid rgba(255,255,255,0.12); box-shadow:0 8px 22px rgba(0,0,0,0.35); }
     .g-tip b{ font-weight:700; }
     .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
-    .g-legend{ display:flex; flex-wrap:wrap; gap:8px; max-width:980px; margin:8px auto 0; }
+    .g-legend{ display:flex; flex-wrap:wrap; gap:8px; width:100%; margin:8px 0 0; justify-content:center; }
     .g-legend .it{ display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); font-size:12px; }
     .g-legend .sw{ width:10px; height:10px; border-radius:3px; }
     .g-more{ display:flex; }
     .g-more.is-collapsed{ display:none; }
     .g-grid{ display:grid; gap:6px; }
-    .g-heat{ border:1px solid #263043; border-radius:14px; overflow:auto; max-width:980px; }
+    .g-heat{ border:1px solid #263043; border-radius:14px; overflow:auto; width:100%; }
     table{ border-collapse:collapse; font-size:13px; }
     th,td{ border-bottom:1px solid #263043; padding:8px 10px; white-space:nowrap; }
     th{ position:sticky; top:0; background:rgba(18,24,38,0.98); color:#9aa4b2; text-align:left; }
@@ -162,6 +162,16 @@
   const $info = el('gInfo');
   const ctx = $canvas.getContext('2d');
 
+  function syncCanvasSize(){
+    if(!$canvas) return;
+    const r = $canvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(r.width || 0));
+    const h = Math.max(240, Math.floor(r.height || 0));
+    // Keep in CSS pixel space for simplicity (fast + predictable on mobile)
+    if($canvas.width !== w) $canvas.width = w;
+    if($canvas.height !== h) $canvas.height = h;
+  }
+
   let LAST_RENDER = null;
   let DATA = null;
   let selected = []; // licences
@@ -177,7 +187,6 @@
       ['overperf','Surperf'],
       ['pointres_total','Points FFTT total'],
       ['pointres_mean','Points FFTT moyen'],
-      ['diff_sets','Diff sets'],
       ['opp_pts_mean','Difficulté'],
     ],
     timeline: [
@@ -197,8 +206,9 @@
   };
 
   const SIMPLE_KEYS = {
-    segments: new Set(['win_rate','matches','wins','losses','perfs','contres','pointres_total','pointres_mean','overperf']),
-    timeline: new Set(['pointres','pointres_cum','perfs_cum','contres_cum','points_est','overperf_cum']),
+    // Keep it truly "simple": 4 metrics max.
+    segments: new Set(['pointres_total','win_rate','perfs','contres']),
+    timeline: new Set(['pointres_cum','pointres','perfs_cum','contres_cum']),
     expected: new Set(['overperf_cum','expected_p']),
     radar: new Set(['radar']),
   };
@@ -341,6 +351,12 @@
   let CURRENT_METRIC_LABEL = '';
 
   const BAR_METRICS = new Set(['wins','losses','matches','perfs','contres','victoires','defaites','total']);
+  // Fixed colors for comparison mode (A=green, B=red) to improve readability.
+  const COLOR_A = '#2ecc71';
+  const COLOR_B = '#e74c3c';
+  const COLOR_CLUB = '#9aa4b2';
+  const COLOR_DELTA = '#b56bff';
+
   function resolveChartType(metric){
     const forced = ($chartType && $chartType.value) ? $chartType.value : 'auto';
     if(forced !== 'auto') return forced;
@@ -436,10 +452,13 @@
       ctx.fillText(t.length>14? (t.slice(0,14)+'…') : t, x(i)-12, h-24);
     }
 
-    // draw each series with different hue via hash
-    for(const s of series){
+    // draw each series
+    for(let si=0; si<series.length; si++){
+      const s = series[si];
       const hue = hashHue(s.label);
-      ctx.strokeStyle = `hsla(${hue}, 80%, 65%, 0.9)`;
+      const stroke = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.9)`;
+      const fill = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.95)`;
+      ctx.strokeStyle = stroke;
       ctx.lineWidth = 3.5;
       ctx.beginPath();
       let started=false;
@@ -462,11 +481,13 @@
 
       // value labels: a few key points (not everywhere)
       const drawVal = (xx, yy, v, alignRight)=>{
-        ctx.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
+        ctx.fillStyle = fill;
         ctx.font='600 12px system-ui';
         const dx = alignRight ? -6 : 6;
         const tx = Math.max(10, Math.min(w-80, xx+dx));
-        ctx.fillText(fmtNum(v), tx, yy-6);
+        // avoid label overlap when multiple series share the same x (common on last point)
+        const ty = yy - 6 + (si * 14);
+        ctx.fillText(fmtNum(v), tx, ty);
       };
       if(lastIdx>=0){
         const idxs = [];
@@ -531,7 +552,8 @@
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
         const hue = hashHue(s.label);
-        ctxB.fillStyle = `hsla(${hue}, 80%, 65%, 0.78)`;
+        const base = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.78)`;
+        ctxB.fillStyle = base;
         const bx = gx + 3 + j*barW;
         const yv = y(v);
         const bh = Math.abs(baseY - yv);
@@ -539,7 +561,7 @@
         ctxB.fillRect(bx, by, barW-2, Math.max(1,bh));
 
         // value label
-        ctxB.fillStyle = `hsla(${hue}, 80%, 70%, 0.95)`;
+        ctxB.fillStyle = s.color ? s.color : `hsla(${hue}, 80%, 70%, 0.95)`;
         ctxB.font='600 11px system-ui';
         ctxB.fillText(fmtNum(v), bx, (v>=0? by-4 : by+bh+12));
       }
@@ -754,10 +776,11 @@
       const ty = y + (y>cy ? 16 : -6);
       ctx.fillText(lbl, tx, ty);
     }
-    function poly(vals, label){
+    function poly(vals, label, color){
       const hue=hashHue(label);
-      ctx.strokeStyle=`hsla(${hue}, 80%, 65%, 0.95)`;
-      ctx.fillStyle=`hsla(${hue}, 80%, 65%, 0.18)`;
+      const stroke = color ? color : `hsla(${hue}, 80%, 65%, 0.95)`;
+      ctx.strokeStyle = stroke;
+      ctx.fillStyle = color ? (stroke + '33') : `hsla(${hue}, 80%, 65%, 0.18)`;
       ctx.lineWidth=3;
       ctx.beginPath();
       for(let i=0;i<n;i++){
@@ -769,8 +792,8 @@
       ctx.fill();
       ctx.stroke();
     }
-    if(a) poly(a.values, a.label);
-    if(b) poly(b.values, b.label);
+    if(a) poly(a.values, a.label, a.color);
+    if(b) poly(b.values, b.label, b.color);
 
     // Legend moved to HTML below the canvas.
   }
@@ -846,6 +869,12 @@
 
   function render(){
     if(!DATA){ return; }
+    syncCanvasSize();
+    // Small fade to make transitions less harsh on mobile
+    try{
+      $canvas.style.transition = 'opacity 180ms ease';
+      $canvas.style.opacity = '0.25';
+    }catch(e){}
     const mode = $mode.value;
     setMetricOptions();
 
@@ -882,17 +911,18 @@
       if(hasB) b = (DATA.players[bLic].radar && DATA.players[bLic].radar[phaseKey] && DATA.players[bLic].radar[phaseKey].norm) || null;
       const club = ($club.checked && DATA.club && DATA.club.radar && DATA.club.radar[phaseKey] && DATA.club.radar[phaseKey].norm) ? DATA.club.radar[phaseKey].norm : null;
 
-      const aSeries = { label: DATA.players[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0) };
+      const aSeries = { label: DATA.players[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
       let bSeries = null;
       if(b){
-        bSeries = { label: DATA.players[bLic].name || bLic, values: axes.map(ax => (b && b[ax.key]) ?? 0) };
+        bSeries = { label: DATA.players[bLic].name || bLic, values: axes.map(ax => (b && b[ax.key]) ?? 0), color: COLOR_B };
       }else if(club){
-        bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0) };
+        bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0), color: COLOR_CLUB };
       }
       setTitleText(`Radar profil — ${phaseLbl}`);
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
       drawRadar(aSeries, bSeries, axes);
       $info.textContent = 'Radar: A vs ' + (bSeries? bSeries.label : '—');
+      requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
       return;
     }
 
@@ -915,6 +945,17 @@
     if(mode==='segments') bundle = seriesSegments(metric, scope, phase, lics);
     else bundle = seriesTimeline(metric, scope, phase, lics);
 
+    // Fixed colors in comparison mode (A=green, B=red, Club=grey, Δ=purple)
+    if(hasB && bundle && bundle.series && bundle.series.length>=2){
+      bundle.series[0].color = COLOR_A;
+      bundle.series[1].color = COLOR_B;
+    }
+    // Club is always last when enabled
+    if($club.checked && bundle && bundle.series && bundle.series.length>=1){
+      const last = bundle.series[bundle.series.length-1];
+      if(last && (last.label==='Club')) last.color = COLOR_CLUB;
+    }
+
     // optional delta series (A - B) when comparing
     if(hasB && $delta.checked && bundle.series.length>=2){
       const aVals = bundle.series[0].values;
@@ -927,7 +968,7 @@
         if(av==null || !isFinite(av) || bv==null || !isFinite(bv)) d.push(null);
         else d.push(av - bv);
       }
-      bundle.series.push({ label: 'Δ (A−B)', values: d });
+      bundle.series.push({ label: 'Δ (A−B)', values: d, color: COLOR_DELTA });
     }
 
     // view switch: overlay vs small multiples
@@ -979,6 +1020,7 @@
         else drawChartOn(cv, b2.labels, b2.series);
       }
       $info.textContent = `Mode ${mode} · vue mini-graphs · métrique ${metric} · joueurs ${toDraw.filter(Boolean).length}`;
+      requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
       return;
     }
 
@@ -996,6 +1038,7 @@
     LAST_RENDER = target;
     const who = hasB ? `${(DATA.players[aLic].name||aLic)} vs ${(DATA.players[bLic].name||bLic)}` : `${selected.length}`;
     $info.textContent = `Mode ${mode} · métrique ${metric} · ${hasB ? 'comparaison' : 'joueurs'} ${who}`;
+    requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
   }
 
   // No search box: player selection is handled via dropdown.
@@ -1102,6 +1145,8 @@
     if(!$moreFilters) return;
     const isMobile = window.matchMedia('(max-width: 560px)').matches;
     if(isMobile){
+      // Important: remove inline display set by desktop to let CSS/media-query drive visibility.
+      $moreFilters.style.display = '';
       $moreFilters.classList.toggle('is-open', _filtersOpen);
     }else{
       // Always visible on desktop
@@ -1120,10 +1165,35 @@
   syncFiltersPanel();
 
   // UX mode (simple/expert)
+  function applyUxMode(){
+    if(!$uxMode) return;
+    const simple = ($uxMode.value === 'simple');
+
+    // Force overlay in simple mode (mini-graphs are more complex visually)
+    if(simple && $view){
+      $view.value = 'overlay';
+      for(const o of $view.options){
+        if(o.value==='multiples') o.disabled = true;
+      }
+    }else if($view){
+      for(const o of $view.options){
+        if(o.value==='multiples') o.disabled = false;
+      }
+    }
+
+    // Hide advanced toggles in simple mode
+    if($delta && $delta.closest('.g-pill')) $delta.closest('.g-pill').style.display = simple ? 'none' : '';
+    if($club && $club.closest('.g-pill')) $club.closest('.g-pill').style.display = simple ? 'none' : '';
+    if($chartType) $chartType.style.display = simple ? 'none' : '';
+
+    // In simple mode on mobile: keep advanced filters collapsed by default
+    if(simple){ _filtersOpen = false; syncFiltersPanel(); }
+  }
   if($uxMode){
     const isMobile = window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
     $uxMode.value = isMobile ? 'simple' : 'expert';
-    $uxMode.addEventListener('change', ()=>{ setMetricOptions(); render(); hideTip(); });
+    applyUxMode();
+    $uxMode.addEventListener('change', ()=>{ applyUxMode(); setMetricOptions(); render(); hideTip(); });
   }
 
   // Focus mode (fullscreen)

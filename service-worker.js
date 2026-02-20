@@ -1,6 +1,6 @@
 /* Simple PWA service worker (cache-first for assets, network-first for navigation) */
 // Bump cache version when the generated site structure changes.
-const CACHE_VERSION = "v14";
+const CACHE_VERSION = "v3.2";
 const CACHE_NAME = "ping-stats-" + CACHE_VERSION;
 
 const CORE = [

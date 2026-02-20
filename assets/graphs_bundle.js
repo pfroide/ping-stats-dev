@@ -28,6 +28,16 @@
     .g-legend{ display:flex; flex-wrap:wrap; gap:8px; width:100%; margin:8px 0 0; justify-content:center; }
     .g-legend .it{ display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); font-size:12px; }
     .g-legend .sw{ width:10px; height:10px; border-radius:3px; }
+    .g-kpi-card{ border:1px solid #263043; border-radius:14px; background:rgba(255,255,255,0.04); padding:10px 12px; }
+    .g-kpi-card .t{ font-size:12px; color:#9aa4b2; font-weight:700; }
+    .g-kpi-card .v{ font-size:18px; font-weight:900; letter-spacing:0.2px; margin-top:2px; }
+    .g-kpi-card .d{ font-size:12px; color:#9aa4b2; margin-top:4px; }
+    .g-info-btn{ all:unset; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-left:6px; border-radius:999px; border:1px solid rgba(255,255,255,0.18); color:#cfe1ff; font-size:12px; }
+    .g-pop{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:flex-end; justify-content:center; z-index:10000; }
+    .g-pop .box{ width:min(720px, 92vw); border:1px solid #263043; border-radius:16px 16px 0 0; background:#0b1220; padding:12px; }
+    .g-pop .box h3{ margin:0 0 6px; font-size:14px; }
+    .g-pop .box p{ margin:0 0 10px; color:#9aa4b2; font-size:13px; }
+    .g-pop .box a{ color:#cfe1ff; text-decoration:underline; font-size:13px; }
     .g-more{ display:flex; }
     .g-more.is-collapsed{ display:none; }
     .g-grid{ display:grid; gap:6px; }
@@ -35,6 +45,21 @@
     table{ border-collapse:collapse; font-size:13px; }
     th,td{ border-bottom:1px solid #263043; padding:8px 10px; white-space:nowrap; }
     th{ position:sticky; top:0; background:rgba(18,24,38,0.98); color:#9aa4b2; text-align:left; }
+
+    /* Player sheet */
+    .g-sheet{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:flex-end; justify-content:center; z-index:12000; }
+    .g-sheet .box{ width:min(820px, 96vw); max-height:92vh; overflow:auto; border:1px solid #263043; border-radius:16px 16px 0 0; background:#0b1220; padding:12px; }
+    .g-sheet .hdr{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .g-sheet .hdr .nm{ font-weight:900; font-size:15px; }
+    .g-tiles{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-top:10px; }
+    .g-tile{ border:1px solid #263043; border-radius:14px; background:rgba(255,255,255,0.04); padding:10px 12px; }
+    .g-tile .t{ font-size:12px; color:#9aa4b2; font-weight:800; }
+    .g-tile .v{ font-size:18px; font-weight:950; margin-top:2px; }
+    .g-tile .s{ font-size:12px; color:#9aa4b2; margin-top:4px; }
+    .g-sheet .sec{ margin-top:12px; }
+    .g-sheet .sec h4{ margin:0 0 8px; font-size:13px; color:rgba(230,233,239,0.95); }
+    .g-sheet .matchlist{ border:1px solid #263043; border-radius:14px; overflow:auto; max-height:40vh; }
+    .g-sheet .matchlist table{ width:100%; }
 
     @media (max-width: 560px){
       .g-canvas{ height:520px; }
@@ -44,6 +69,7 @@
       /* default: keep advanced filters collapsed */
       .g-more{ display:none; }
       .g-more.is-open{ display:flex; }
+      .g-tiles{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
     }
 
     /* Focus mode (mobile-first fullscreen) */
@@ -80,6 +106,7 @@
           <option value="expert">Vue: expert</option>
         </select>
         <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
+        <button id="gSheet" class="g-btn" type="button">Fiche</button>
         <button id="gToggleFilters" class="g-btn" type="button">⚙ Filtres</button>
         <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
         <label class="g-pill" style="cursor:default">
@@ -116,6 +143,14 @@
           <option value="1">Phase 1</option>
           <option value="2">Phase 2</option>
         </select>
+        <label class="g-pill" style="cursor:default"><input id="gCtxBetter" type="checkbox"/><small>vs mieux classés</small></label>
+        <label class="g-pill" style="cursor:default"><input id="gCtxWorse" type="checkbox"/><small>vs moins classés</small></label>
+        <label class="g-pill" style="cursor:default"><input id="gCtxClose" type="checkbox"/><small>matchs serrés</small></label>
+      </div>
+
+      <div class="g-row" id="gTimelineScroll" style="display:none; align-items:center; gap:10px;">
+        <div class="g-muted" style="min-width:72px;">Défilement</div>
+        <input id="gScroll" type="range" min="0" max="0" value="0" style="flex:1;" />
       </div>
 
       <div class="g-row">
@@ -126,11 +161,47 @@
       <div id="gTip" class="g-tip" style="display:none"></div>
       <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
       <div id="gLegend" class="g-legend"></div>
+      <div id="gCompareCards" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;"></div>
       <div id="gMulti" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; max-width:980px;"></div>
       <div class="g-muted" id="gInfo"></div>
+
+      <div class="g-sheet" id="gSheetPop"><div class="box">
+        <div class="hdr">
+          <div>
+            <div class="nm" id="gSheetName">Fiche joueur</div>
+            <div class="g-muted" style="font-size:12px" id="gSheetSub"></div>
+          </div>
+          <div class="g-row" style="gap:8px;">
+            <button id="gSheetDetails" class="g-btn" type="button">Détails</button>
+            <button id="gSheetClose" class="g-btn" type="button">✕</button>
+          </div>
+        </div>
+        <div class="g-tiles" id="gSheetTiles"></div>
+        <div class="sec">
+          <h4>Graphe principal</h4>
+          <canvas id="gSheetCanvas" class="g-canvas" width="980" height="420" style="height:340px"></canvas>
+        </div>
+        <div class="sec" id="gSheetMatches" style="display:none;">
+          <h4>Match par match</h4>
+          <div class="matchlist" id="gSheetMatchList"></div>
+        </div>
+      </div></div>
     </div>
   `;
   root.appendChild(wrap);
+
+  // KPI help popup (2 lines + link)
+  const $pop = document.createElement('div');
+  $pop.className = 'g-pop';
+  $pop.innerHTML = `<div class="box">
+      <h3 id="gPopTitle">KPI</h3>
+      <p id="gPopText"></p>
+      <div class="g-row" style="justify-content:space-between; align-items:center;">
+        <a id="gPopLink" href="#" target="_self">Détail</a>
+        <button id="gPopClose" class="g-btn" type="button">Fermer</button>
+      </div>
+    </div>`;
+  root.appendChild($pop);
 
   const el = (id) => root.getElementById(id);
   const $player = el('gPlayer');
@@ -145,6 +216,7 @@
   const $uxMode = el('gUxMode');
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
+  const $sheetBtn = el('gSheet');
   const $focusBar = el('gFocusBar');
   const $focusClose = el('gFocusClose');
   const $focusTitle = el('gFocusTitle');
@@ -154,6 +226,25 @@
   const $exportBtn = el('gExport');
   const $club = el('gClub');
   const $pills = el('gPills');
+  const $ctxBetter = el('gCtxBetter');
+  const $ctxWorse = el('gCtxWorse');
+  const $ctxClose = el('gCtxClose');
+  const $timelineScrollRow = el('gTimelineScroll');
+  const $scroll = el('gScroll');
+  const $compareCards = el('gCompareCards');
+  const $sheetPop = el('gSheetPop');
+  const $sheetName = el('gSheetName');
+  const $sheetSub = el('gSheetSub');
+  const $sheetTiles = el('gSheetTiles');
+  const $sheetCanvas = el('gSheetCanvas');
+  const $sheetClose = el('gSheetClose');
+  const $sheetDetails = el('gSheetDetails');
+  const $sheetMatches = el('gSheetMatches');
+  const $sheetMatchList = el('gSheetMatchList');
+  const $popTitle = el('gPopTitle');
+  const $popText = el('gPopText');
+  const $popLink = el('gPopLink');
+  const $popClose = el('gPopClose');
   const $title = el('gTitle');
   const $tip = el('gTip');
   const $canvas = el('gCanvas');
@@ -172,8 +263,87 @@
     if($canvas.height !== h) $canvas.height = h;
   }
 
+  function syncSheetCanvasSize(){
+    if(!$sheetCanvas) return;
+    const r = $sheetCanvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(r.width || 0));
+    const h = Math.max(240, Math.floor(r.height || 0));
+    if($sheetCanvas.width !== w) $sheetCanvas.width = w;
+    if($sheetCanvas.height !== h) $sheetCanvas.height = h;
+  }
+
+  function pct(x){
+    if(x==null || !isFinite(x)) return '—';
+    return (x*100).toFixed(0) + '%';
+  }
+
+  function openSheetFor(lic){
+    if(!lic) return;
+    const p = PLAYERS[lic];
+    if(!p) return;
+    const s = p.summary || {};
+    $sheetName.textContent = (p.name || lic);
+    const m = Number(s.matches||0);
+    const w = Number(s.wins||0);
+    const l = Number(s.losses||0);
+    $sheetSub.textContent = `${m} matchs · ${w} V · ${l} D`;
+
+    const clutchRate = (s.clutch_rate==null || !isFinite(s.clutch_rate)) ? null : Number(s.clutch_rate);
+    const dom = (s.dominance==null || !isFinite(s.dominance)) ? null : Number(s.dominance);
+    const pts = (s.pointres_total==null || !isFinite(s.pointres_total)) ? null : Number(s.pointres_total);
+
+    const tiles = [
+      {t:'Victoires', v: pct(s.win_rate), s: `${w}/${m}`},
+      {t:'Perfs', v: String(s.perfs ?? 0), s: ''},
+      {t:'Contres', v: String(s.contres ?? 0), s: ''},
+      {t:'Points FFTT', v: (pts==null? '—' : fmtNum(pts)), s: 'total'},
+      {t:'Clutch (5 sets)', v: (clutchRate==null? '—' : pct(clutchRate)), s: `${s.clutch_wins??0}/${s.clutch_played??0}`},
+      {t:'Dominance', v: (dom==null? '—' : fmtNum(dom)), s: 'sets/match'},
+    ];
+    $sheetTiles.innerHTML = tiles.map(x=>`<div class="g-tile"><div class="t">${esc(x.t)}</div><div class="v">${esc(x.v)}</div><div class="s">${esc(x.s||'')}</div></div>`).join('');
+
+    // main chart: default to timeline Points FFTT cumulés (tous scope)
+    syncSheetCanvasSize();
+    const tl = (p.timeline && (p.timeline['tous'] || p.timeline['indiv'] || p.timeline['equipe'])) || [];
+    const labels = tl.map(r => cleanXLabel((r.date||'') + (r.match_id? ` #${r.match_id}`:'')));
+    const vals = tl.map(r => (r.pointres_cum!=null ? r.pointres_cum : null));
+    const series = [{label: p.name || lic, values: vals, color: COLOR_A}];
+    drawChartOn($sheetCanvas, labels, series);
+
+    // details table (match by match)
+    const rows = (tl || []).slice().reverse().slice(0, 60);
+    const html = `
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Adversaire</th><th>Rés.</th><th>Pts FFTT</th><th>Perf</th><th>Contre</th><th>Serré</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>{
+            const res = r.win ? 'V' : 'D';
+            const ptsm = (r.pointres==null? '' : fmtNum(r.pointres));
+            return `<tr>
+              <td>${esc((r.date||'').slice(0,10))}</td>
+              <td>${esc(r.opp_name||'')}</td>
+              <td><b>${esc(res)}</b></td>
+              <td>${esc(ptsm)}</td>
+              <td>${r.perf? '✅':''}</td>
+              <td>${r.contre? '⚠️':''}</td>
+              <td>${r.close_match? '✓':''}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+    $sheetMatchList.innerHTML = html;
+
+    $sheetMatches.style.display = 'none';
+    $sheetPop.style.display = 'flex';
+  }
+
+  function closeSheet(){
+    $sheetPop.style.display = 'none';
+  }
+
   let LAST_RENDER = null;
-  let DATA = null;
   let selected = []; // licences
 
   const METRICS = {
@@ -201,6 +371,8 @@
     expected: [
       ['overperf_cum','Surperf cumulée'],
       ['expected_p','Probabilité attendue'],
+      ['expected_cum','Victoires attendues (cumul)'],
+      ['real_cum','Victoires réelles (cumul)'],
     ],
     radar: [ ['radar','Kiviat'] ],
   };
@@ -239,8 +411,17 @@
 
   function esc(s){ return (''+s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  async function fetchJSONCandidates(){
+  let MANIFEST = null;
+  let PLAYER_INDEX = {}; // lic -> {name,matches}
+  let PLAYERS = {};      // lic -> full data (loaded on demand)
+  let CLUB = null;
+
+  async function fetchManifest(){
     const candidates = [
+      new URL('data/manifest.json', document.baseURI).toString(),
+      './data/manifest.json',
+      'data/manifest.json',
+      // fallback (older deployments)
       new URL('site_data.json', document.baseURI).toString(),
       './site_data.json',
       'site_data.json',
@@ -250,8 +431,7 @@
       try{
         const r = await fetch(url, {cache:'no-store'});
         if(!r.ok) throw new Error(`HTTP ${r.status}`);
-        const text = await r.text();
-        const data = JSON.parse(text);
+        const data = await r.json();
         return {data, url};
       }catch(e){
         last = {url, e};
@@ -260,10 +440,48 @@
     throw last || new Error('fetch failed');
   }
 
+  async function ensureClub(){
+    if(CLUB) return;
+    const candidates = [
+      new URL('data/club.json', document.baseURI).toString(),
+      './data/club.json',
+      'data/club.json'
+    ];
+    for(const url of candidates){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) continue;
+        CLUB = await r.json();
+        return;
+      }catch(e){ /* ignore */ }
+    }
+    CLUB = null;
+  }
+
+  async function ensurePlayer(lic){
+    if(!lic) return null;
+    if(PLAYERS[lic]) return PLAYERS[lic];
+    const candidates = [
+      new URL(`data/players/${lic}.json`, document.baseURI).toString(),
+      `./data/players/${lic}.json`,
+      `data/players/${lic}.json`
+    ];
+    for(const url of candidates){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) continue;
+        const data = await r.json();
+        PLAYERS[lic] = data;
+        return data;
+      }catch(e){ /* ignore */ }
+    }
+    return null;
+  }
+
   function fillPlayers(){
     $player.innerHTML = '<option value="">Joueur…</option>';
     $compare.innerHTML = '<option value="">Comparer: aucun</option>';
-    const entries = Object.entries(DATA.players || {}).map(([lic,p]) => [lic, p.name || lic]);
+    const entries = Object.entries(PLAYER_INDEX).map(([lic,p]) => [lic, p.name || lic]);
     entries.sort((a,b)=> (a[1]||'').localeCompare(b[1]||'', 'fr', {sensitivity:'base'}));
     for (const [lic,name] of entries){
       const o=document.createElement('option');
@@ -281,22 +499,27 @@
 
   async function load(){
     try{
-      const res = await fetchJSONCandidates();
-      DATA = res.data;
+      const res = await fetchManifest();
+      MANIFEST = res.data;
+      PLAYER_INDEX = {};
+      for(const p of (MANIFEST.players || [])){
+        PLAYER_INDEX[p.licence] = {name: p.name, matches: p.matches};
+      }
       fillPlayers();
     }catch(err){
       const url = err && err.url ? err.url : '';
       const msg = err && err.e ? String(err.e) : String(err);
-      $info.textContent = `Erreur chargement site_data.json${url? ' ('+url+')':''}: ${msg}`;
+      $info.textContent = `Erreur chargement manifest/site_data${url? ' ('+url+')':''}: ${msg}`;
       console.error(err);
     }
   }
 
   // dropdown selection
-  $player.addEventListener('change', ()=>{
+  $player.addEventListener('change', async ()=>{
     const lic = $player.value;
     if(!lic) return;
-    if(!DATA || !DATA.players || !DATA.players[lic]) return;
+    if(!PLAYER_INDEX[lic]) return;
+    await ensurePlayer(lic);
     if($mode.value === 'radar'){
       selected = [lic];
     } else {
@@ -304,7 +527,7 @@
       if(selected.length>5) selected = selected.slice(-5);
     }
     renderPills();
-    render();
+    await render();
   });
 
   $clearPlayers.addEventListener('click', ()=>{
@@ -313,15 +536,33 @@
     render();
   });
 
-  function addPlayer(lic){
-    if(!lic || !DATA.players[lic]) return;
+  // Player sheet (1 screen)
+  $sheetBtn.addEventListener('click', async ()=>{
+    const lic = (selected && selected.length ? selected[0] : $player.value) || '';
+    if(!lic) return;
+    await ensurePlayer(lic);
+    openSheetFor(lic);
+  });
+  $sheetClose.addEventListener('click', ()=> closeSheet());
+  $sheetPop.addEventListener('click', (e)=>{
+    // click outside box closes
+    if(e.target === $sheetPop) closeSheet();
+  });
+  $sheetDetails.addEventListener('click', ()=>{
+    const on = ($sheetMatches.style.display !== 'none');
+    $sheetMatches.style.display = on ? 'none' : 'block';
+  });
+
+  async function addPlayer(lic){
+    if(!lic || !PLAYER_INDEX[lic]) return;
+    await ensurePlayer(lic);
     if(selected.includes(lic)) return;
     // radar: keep A single for readability; allow compare via select
     if($mode.value==='radar') selected = [];
     selected.push(lic);
     if(selected.length>5) selected = selected.slice(-5);
     renderPills();
-    render();
+    await render();
   }
 
   function removePlayer(lic){
@@ -332,7 +573,7 @@
 
   function renderPills(){
     $pills.innerHTML = selected.map(lic => {
-      const name = (DATA && DATA.players[lic] && DATA.players[lic].name) ? DATA.players[lic].name : lic;
+      const name = (PLAYERS[lic] && PLAYERS[lic].name) ? PLAYERS[lic].name : ((PLAYER_INDEX[lic] && PLAYER_INDEX[lic].name) ? PLAYER_INDEX[lic].name : lic);
       return `<span class="g-pill" data-lic="${esc(lic)}">${esc(name)} <small>×</small></span>`;
     }).join('');
   }
@@ -376,10 +617,62 @@
     return (s||'').replace(/\s*#.*$/,'').trim();
   }
 
+  function kpiKeyForMetric(mode, metricKey){
+    if(!metricKey) return null;
+    // map internal series keys to KPI definition keys (manifest)
+    const m = {
+      win_rate: 'win_rate',
+      perfs: 'perfs',
+      contres: 'contres',
+      pointres_total: 'points_fftt',
+      pointres_mean: 'points_fftt',
+      pointres: 'points_fftt',
+      pointres_cum: 'points_fftt',
+      expected_p: 'expected',
+      expected_cum: 'expected',
+      real_cum: 'expected',
+      overperf: 'overperf',
+      overperf_cum: 'overperf',
+      clutch_rate: 'clutch',
+      dominance: 'dominance',
+      strength: 'force',
+      anti_contre: 'anti_contre',
+      std_points_fftt: 'regularity',
+      dispersion_perf_contre: 'dispersion',
+    };
+    if(mode==='radar') return 'radar';
+    return m[metricKey] || null;
+  }
+
+  function showKpiInfo(def){
+    try{
+      if(!$pop) return;
+      if(!def){ $pop.style.display='none'; return; }
+      if($popTitle) $popTitle.textContent = def.label || 'KPI';
+      if($popText) $popText.textContent = def.detail || def.short || '';
+      if($popLink){
+        $popLink.textContent = 'Détail';
+        $popLink.href = def.link || '#';
+      }
+      $pop.style.display='flex';
+    }catch(e){}
+  }
+
+  if($popClose) $popClose.addEventListener('click', () => { $pop.style.display='none'; });
+  $pop.addEventListener('click', (ev) => { if(ev.target === $pop) $pop.style.display='none'; });
+
   function setTitleText(t){
     if(!$title) return;
-    $title.textContent = t || '';
-    if($focusTitle && wrap.classList.contains('g-focus')) $focusTitle.textContent = $title.textContent;
+    const mode = $mode ? $mode.value : 'segments';
+    const kpiKey = kpiKeyForMetric(mode, ($metric ? $metric.value : ''));
+    const def = (MANIFEST && MANIFEST.meta && MANIFEST.meta.kpi_definitions && kpiKey) ? MANIFEST.meta.kpi_definitions[kpiKey] : null;
+    const info = def ? `<button class="g-info-btn" type="button" aria-label="info">i</button>` : '';
+    $title.innerHTML = `${esc(t || '')}${info}`;
+    const btn = $title.querySelector('.g-info-btn');
+    if(btn && def){
+      btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); showKpiInfo(def); });
+    }
+    if($focusTitle && wrap.classList.contains('g-focus')) $focusTitle.textContent = (t || '');
   }
 
   function renderLegend(series){
@@ -387,7 +680,7 @@
     if(!series || !series.length){ $legend.innerHTML=''; return; }
     $legend.innerHTML = series.map(s=>{
       const hue = hashHue(s.label);
-      const col = `hsla(${hue}, 80%, 65%, 0.95)`;
+      const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.95)`;
       return `<span class="it"><span class="sw" style="background:${col}"></span>${esc(s.label)}</span>`;
     }).join('');
   }
@@ -670,7 +963,8 @@
 
     for(const s of series){
       const hue = hashHue(s.label);
-      ctx2.strokeStyle = `hsla(${hue}, 80%, 65%, 0.9)`;
+      const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.9)`;
+      ctx2.strokeStyle = col;
       ctx2.lineWidth = 3;
       ctx2.beginPath();
       let started=false;
@@ -698,7 +992,7 @@
         pushUniq(firstIdx);
         pushUniq(lastIdx);
         if(n>=8){ pushUniq(maxIdx); pushUniq(minIdx); }
-        ctx2.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
+        ctx2.fillStyle = col;
         ctx2.font='600 11px system-ui';
         for(const i of idxs.slice(0,3)){
           const v=s.values[i];
@@ -757,7 +1051,8 @@
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
         const hue = hashHue(s.label);
-        ctx2.fillStyle = `hsla(${hue}, 80%, 65%, 0.78)`;
+        const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.78)`;
+        ctx2.fillStyle = col;
         const bx = gx + 3 + j*barW;
         const yv = y(v);
         const bh = Math.abs(baseY - yv);
@@ -765,7 +1060,7 @@
         ctx2.fillRect(bx, by, barW-2, Math.max(1,bh));
         // value label (few only to avoid clutter)
         if(n<=10 || i===0 || i===n-1){
-          ctx2.fillStyle = `hsla(${hue}, 80%, 70%, 0.95)`;
+          ctx2.fillStyle = col;
           ctx2.font='600 11px system-ui';
           ctx2.fillText(fmtNum(v), bx, (v>=0? by-4 : by+bh+12));
         }
@@ -838,7 +1133,7 @@
     // collect labels from first selected player
     const lic = lics[0];
     if(!lic) return [];
-    const segs = (DATA.players[lic].segments && DATA.players[lic].segments[scope]) || {};
+    const segs = (PLAYERS[lic].segments && PLAYERS[lic].segments[scope]) || {};
     const entries = Object.entries(segs).map(([k,v]) => ({k, v}));
     entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
     return entries.filter(e => phase==='all' || (''+e.v.phase)==phase).map(e => e.v.segment_nom || e.k);
@@ -849,7 +1144,7 @@
     const labels = segmentLabels(scope, phase, lics);
     const out=[];
     for(const lic of lics){
-      const p = DATA.players[lic];
+      const p = PLAYERS[lic];
       const segs = (p.segments && p.segments[scope]) || {};
       const entries = Object.entries(segs).map(([k,v]) => ({k,v}));
       entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
@@ -862,7 +1157,7 @@
     }
     // club overlay
     if($club.checked){
-      const segs = (DATA.club && DATA.club.segments && DATA.club.segments[scope]) || {};
+      const segs = (CLUB && CLUB.segments && CLUB.segments[scope]) || {};
       const entries = Object.entries(segs).map(([k,v])=>({k,v}));
       entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
       const filtered = entries.filter(e => phase==='all' || (''+e.v.phase)==phase);
@@ -878,8 +1173,22 @@
     if(!lic) return {labels:[], series:[]};
     const out=[];
     // labels from first selected
-    const baseArr = (DATA.players[lic].timeline && DATA.players[lic].timeline[scope]) || [];
-    const filteredBase = baseArr.filter(x => phase==='all' || (''+x.phase)==phase);
+    const baseArr = (PLAYERS[lic].timeline && PLAYERS[lic].timeline[scope]) || [];
+    const ctxBetter = $ctxBetter && $ctxBetter.checked;
+    const ctxWorse = $ctxWorse && $ctxWorse.checked;
+    const ctxClose = $ctxClose && $ctxClose.checked;
+    const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
+    const keepRow = (x)=>{
+      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      const d = Number(x.diff_pts||0);
+      if(!wantAllRel){
+        if(ctxBetter && !(d < 0)) return false;
+        if(ctxWorse && !(d > 0)) return false;
+      }
+      if(ctxClose && !x.close_match) return false;
+      return true;
+    };
+    const filteredBase = baseArr.filter(keepRow);
     const clean = (t)=>{
       if(!t) return '';
       const s = String(t);
@@ -890,20 +1199,25 @@
     const matchIds = filteredBase.map(x => (x.match_id!=null ? String(x.match_id) : ''));
 
     for(const l of lics){
-      const arr = ((DATA.players[l].timeline && DATA.players[l].timeline[scope]) || []).filter(x => phase==='all' || (''+x.phase)==phase);
+      const arr = ((PLAYERS[l].timeline && PLAYERS[l].timeline[scope]) || []).filter(keepRow);
       const vals = arr.map(x => {
         const v=x[metric];
         return (typeof v==='number') ? v : (v==null? null : Number(v));
       });
-      out.push({ label: DATA.players[l].name || l, values: vals });
+      out.push({ label: PLAYERS[l].name || l, values: vals });
     }
     return {labels, matchIds, series: out};
   }
 
   // Heatmap removed.
 
-  function render(){
-    if(!DATA){ return; }
+  async function render(){
+    if(!MANIFEST){ return; }
+    // ensure required data is loaded
+    for(const lic of (selected||[])) await ensurePlayer(lic);
+    const bLic = $compare && $compare.value ? $compare.value : '';
+    if(bLic) await ensurePlayer(bLic);
+    if($club && $club.checked) await ensureClub();
     syncCanvasSize();
     // Small fade to make transitions less harsh on mobile
     try{
@@ -917,6 +1231,7 @@
     $multi.style.display = 'none';
     $canvas.style.display = 'block';
     if($legend) $legend.innerHTML = '';
+    if($compareCards){ $compareCards.style.display = 'none'; $compareCards.innerHTML = ''; }
 
     // view controls enabled only on line modes
     const isLineMode = (mode==='segments' || mode==='timeline' || mode==='expected');
@@ -927,7 +1242,7 @@
     // Comparison rules: if compare selected, we enforce A vs B on line modes too
     const aLic = selected[0] || '';
     const bLic = ($compare.value || '');
-    const hasB = !!(bLic && DATA.players && DATA.players[bLic]);
+    const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if(isLineMode && hasB){
       $club.checked = false;
       $club.disabled = true;
@@ -939,17 +1254,17 @@
       if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
       const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
       const phaseLbl = ($phase.value==='all') ? 'Toutes phases' : ('Phase ' + $phase.value);
-      const axes = (DATA.meta && DATA.meta.radar_axes) || [];
-      const a = (DATA.players[aLic].radar && DATA.players[aLic].radar[phaseKey] && DATA.players[aLic].radar[phaseKey].norm) || null;
+      const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
+      const a = (PLAYERS[aLic].radar && PLAYERS[aLic].radar[phaseKey] && PLAYERS[aLic].radar[phaseKey].norm) || null;
 
       let b = null;
-      if(hasB) b = (DATA.players[bLic].radar && DATA.players[bLic].radar[phaseKey] && DATA.players[bLic].radar[phaseKey].norm) || null;
-      const club = ($club.checked && DATA.club && DATA.club.radar && DATA.club.radar[phaseKey] && DATA.club.radar[phaseKey].norm) ? DATA.club.radar[phaseKey].norm : null;
+      if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;
+      const club = ($club.checked && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
 
-      const aSeries = { label: DATA.players[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
+      const aSeries = { label: PLAYERS[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
       let bSeries = null;
       if(b){
-        bSeries = { label: DATA.players[bLic].name || bLic, values: axes.map(ax => (b && b[ax.key]) ?? 0), color: COLOR_B };
+        bSeries = { label: PLAYERS[bLic].name || bLic, values: axes.map(ax => (b && b[ax.key]) ?? 0), color: COLOR_B };
       }else if(club){
         bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0), color: COLOR_CLUB };
       }
@@ -957,6 +1272,27 @@
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
       drawRadar(aSeries, bSeries, axes);
       $info.textContent = 'Kiviat: A vs ' + (bSeries? bSeries.label : '—');
+
+      // A/B synthesis cards under the kiviat (mobile-friendly)
+      if($compareCards){
+        if(hasB){
+          const sa = (PLAYERS[aLic] && PLAYERS[aLic].summary) ? PLAYERS[aLic].summary : {};
+          const sb = (PLAYERS[bLic] && PLAYERS[bLic].summary) ? PLAYERS[bLic].summary : {};
+          const fmtPct = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100) + '%');
+          const fmtInt = (x)=> (x==null||!isFinite(x)) ? '—' : String(Math.round(x));
+          const fmtF = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100)/100).toFixed(2);
+          const cards = [
+            {t:'Tx victoire', a: fmtPct(sa.win_rate), b: fmtPct(sb.win_rate), d: `Δ ${fmtPct((sa.win_rate||0)-(sb.win_rate||0))}`},
+            {t:'Perfs / Contres', a: `${fmtInt(sa.perfs)} / ${fmtInt(sa.contres)}`, b: `${fmtInt(sb.perfs)} / ${fmtInt(sb.contres)}`, d: `Δ ${(fmtInt((sa.perfs||0)-(sb.perfs||0)))} / ${(fmtInt((sa.contres||0)-(sb.contres||0)))}`},
+            {t:'Points FFTT', a: fmtF(sa.pointres_total), b: fmtF(sb.pointres_total), d: `Δ ${fmtF((sa.pointres_total||0)-(sb.pointres_total||0))}`},
+          ];
+          $compareCards.style.display = 'grid';
+          $compareCards.innerHTML = cards.map(c=>`<div class="g-kpi-card"><div class="t">${esc(c.t)}</div><div class="v"><span style="color:${COLOR_A}">${esc(c.a)}</span> <span class="g-muted" style="font-weight:700">vs</span> <span style="color:${COLOR_B}">${esc(c.b)}</span></div><div class="d">${esc(c.d)}</div></div>`).join('');
+        }else{
+          $compareCards.style.display = 'none';
+          $compareCards.innerHTML = '';
+        }
+      }
       requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
       return;
     }
@@ -1006,6 +1342,29 @@
       bundle.series.push({ label: 'Δ (A−B)', values: d, color: COLOR_DELTA });
     }
 
+    // Mobile readability: very long timelines are shown with a scrollable window.
+    // This avoids illegible X labels and heavy rendering.
+    const isTimelineLike = (mode==='timeline' || mode==='expected');
+    const MAX_POINTS = 80;
+    if(isTimelineLike && bundle && bundle.labels && bundle.labels.length > MAX_POINTS){
+      const n = bundle.labels.length;
+      if($timelineScrollRow) $timelineScrollRow.style.display = 'flex';
+      if($scroll){
+        $scroll.max = String(Math.max(0, n - MAX_POINTS));
+        const start = Math.max(0, Math.min(parseInt($scroll.value||'0',10)||0, n - MAX_POINTS));
+        $scroll.value = String(start);
+        const end = Math.min(n, start + MAX_POINTS);
+        bundle.labels = bundle.labels.slice(start, end);
+        if(bundle.matchIds) bundle.matchIds = bundle.matchIds.slice(start, end);
+        for(const s of (bundle.series||[])){
+          s.values = (s.values||[]).slice(start, end);
+        }
+      }
+    }else{
+      if($timelineScrollRow) $timelineScrollRow.style.display = 'none';
+      if($scroll){ $scroll.max = '0'; $scroll.value = '0'; }
+    }
+
     // view switch: overlay vs small multiples
     const view = $view.value;
     if(view === 'multiples' && isLineMode){
@@ -1017,8 +1376,8 @@
       const toDraw = hasB ? [aLic, bLic] : selected.slice();
       const ctMulti = resolveChartType(metric);
       for(const lic of toDraw){
-        if(!lic || !DATA.players[lic]) continue;
-        const name = DATA.players[lic].name || lic;
+        if(!lic || !PLAYERS[lic]) continue;
+        const name = PLAYERS[lic].name || lic;
         const card = document.createElement('div');
         card.className = 'g-grid';
         card.style.cssText = 'border:1px solid #263043; border-radius:14px; padding:8px; background:rgba(255,255,255,0.03);';
@@ -1036,12 +1395,15 @@
         let b2;
         if(mode==='segments') b2 = seriesSegments(metric, scope, phase, [lic]);
         else b2 = seriesTimeline(metric, scope, phase, [lic]);
+        if(hasB && b2 && b2.series && b2.series.length){
+          b2.series[0].color = (lic===aLic) ? COLOR_A : COLOR_B;
+        }
         // add club overlay if enabled and allowed
         if($club.checked && !$club.disabled){
           if(mode==='segments'){
             const c = seriesSegments(metric, scope, phase, []); // uses selected default but includes club overlay; we want only club values aligned.
             // rebuild club series directly from DATA
-            const segs = (DATA.club && DATA.club.segments && DATA.club.segments[scope]) || {};
+            const segs = (CLUB && CLUB.segments && CLUB.segments[scope]) || {};
             const entries = Object.entries(segs).map(([k,v])=>({k,v}));
             entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
             const filtered = entries.filter(e => phase==='all' || (''+e.v.phase)==phase);
@@ -1071,7 +1433,7 @@
       else drawLine(bundle.labels, bundle.series);
     }
     LAST_RENDER = target;
-    const who = hasB ? `${(DATA.players[aLic].name||aLic)} vs ${(DATA.players[bLic].name||bLic)}` : `${selected.length}`;
+    const who = hasB ? `${(PLAYERS[aLic].name||aLic)} vs ${(PLAYERS[bLic].name||bLic)}` : `${selected.length}`;
     $info.textContent = `Mode ${mode} · métrique ${metric} · ${hasB ? 'comparaison' : 'joueurs'} ${who}`;
     requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
   }
@@ -1088,14 +1450,14 @@
 
     // Special case: radar (no X index). Show axis values for selected players/club.
     if($mode.value==='radar'){
-      if(!DATA || !selected.length) return;
+      if(!MANIFEST || !selected.length) return;
       const aLic = selected[0];
       const bLic = $compare.value || null;
       const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
-      const axes = (DATA.meta && DATA.meta.radar_axes) || [];
-      const Araw = (((DATA.players[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
-      const Braw = bLic ? ((((DATA.players[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
-      const Craw = ($club.checked && DATA.club && DATA.club.radar && DATA.club.radar[phaseKey]) ? (DATA.club.radar[phaseKey].raw||{}) : null;
+      const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
+      const Araw = (((PLAYERS[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
+      const Braw = bLic ? ((((PLAYERS[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
+      const Craw = ($club.checked && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
       // Determine closest axis from tap position
       const rect = $canvas.getBoundingClientRect();
       const sx = (clientX - rect.left) * ($canvas.width / rect.width);
@@ -1112,8 +1474,8 @@
       idx = Math.max(0, Math.min(n-1, idx));
       const ax = axes[idx] || axes[0];
 
-      const Aname = (DATA.players[aLic] && DATA.players[aLic].name) ? DATA.players[aLic].name : aLic;
-      const Bname = (bLic && DATA.players[bLic] && DATA.players[bLic].name) ? DATA.players[bLic].name : (bLic||'');
+      const Aname = (PLAYERS[aLic] && PLAYERS[aLic].name) ? PLAYERS[aLic].name : aLic;
+      const Bname = (bLic && PLAYERS[bLic] && PLAYERS[bLic].name) ? PLAYERS[bLic].name : (bLic||'');
       const phaseLbl = ($phase.value==='all') ? 'Toutes phases' : ('Phase '+$phase.value);
       const k = ax.key;
       const lbl = ax.label;
@@ -1262,12 +1624,23 @@
   $compare.addEventListener('change', ()=>{
     // keep A as first selected; if none, auto select first player in data
     if($compare.value && selected.length===0){
-      const first = Object.keys(DATA.players||{})[0];
+      const first = Object.keys(PLAYER_INDEX||{})[0];
       if(first) addPlayer(first);
     }
     render();
   });
   $club.addEventListener('change', render);
+
+  // Context filters
+  function ctxChanged(){
+    // If both better+worse unchecked => include all.
+    // If both checked => include all.
+    render();
+  }
+  if($ctxBetter) $ctxBetter.addEventListener('change', ctxChanged);
+  if($ctxWorse) $ctxWorse.addEventListener('change', ctxChanged);
+  if($ctxClose) $ctxClose.addEventListener('change', ctxChanged);
+  if($scroll) $scroll.addEventListener('input', ()=> render());
 
   $exportBtn.addEventListener('click', ()=>{
     const mode = $mode.value;
@@ -1305,7 +1678,7 @@
   setMetricOptions();
   load().then(()=>{
     // preselect first player if exists
-    const first = Object.keys(DATA.players||{})[0];
+    const first = Object.keys(PLAYER_INDEX||{})[0];
     if(first) addPlayer(first);
   });
 })();

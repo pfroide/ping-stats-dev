@@ -1,6 +1,6 @@
-# Auto-generated (ping_mobile_v3)
+# Auto-generated (ping_mobile_v2)
 "
-            "# Keep static site artifacts even if the parent repo ignores *.json or assets/*
+            "# Keep static site artifacts even if the parent repo ignores *.json
 "
             "*
 "

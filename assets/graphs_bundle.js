@@ -2,19 +2,10 @@
 (() => {
   const host = document.getElementById('graphics-root');
   if (!host) return;
-
-  function showFatal(title, details){
-    try{
-      host.innerHTML = `
-        <div style="padding:12px;border:1px solid rgba(255,255,255,0.12);border-radius:14px;background:rgba(0,0,0,0.25);color:rgba(230,233,239,0.92);font-family:system-ui">
-          <div style="font-weight:700;margin-bottom:6px">${title}</div>
-          <div style="font-size:12px;line-height:1.35;color:rgba(154,164,178,0.95)">${details||''}</div>
-          <div style="margin-top:8px;font-size:12px;color:rgba(154,164,178,0.95)">Astuce: DevTools → Network/Console, vérifie <code>assets/graphs_bundle.js</code> et <code>data/manifest.json</code>.</div>
-        </div>`;
-    }catch(e){ /* ignore */ }
-  }
-
-  try{
+  const fallback = document.createElement('div');
+  fallback.style.cssText = 'padding:10px;border-radius:12px;background:rgba(255,70,70,.12);color:#ffd2d2;font-size:14px;display:none';
+  host.appendChild(fallback);
+  try {
 
   // Shadow DOM to prevent CSS regressions
   const root = host.attachShadow({ mode: 'open' });
@@ -450,9 +441,7 @@
         last = {url, e};
       }
     }
-    const url = (last && last.url) ? String(last.url) : '';
-    const err = (last && last.e) ? String(last.e) : 'fetch failed';
-    throw new Error(`Impossible de charger les données (${url}): ${err}`);
+    throw last || new Error('fetch failed');
   }
 
   async function ensureClub(){
@@ -1695,13 +1684,10 @@
     // preselect first player if exists
     const first = Object.keys(PLAYER_INDEX||{})[0];
     if(first) addPlayer(first);
-  }).catch((e)=>{
-    console.error(e);
-    showFatal('Erreur chargement Graphiques', String(e && e.message ? e.message : e));
   });
-  }
-  catch(e){
-    console.error(e);
-    showFatal('Erreur JS Graphiques', String(e && e.message ? e.message : e));
+  } catch (e) {
+    fallback.style.display = 'block';
+    fallback.textContent = 'Erreur Graphiques: ' + (e && e.message ? e.message : String(e));
+    console.error('[graphs_bundle] crash', e);
   }
 })();

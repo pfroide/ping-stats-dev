@@ -1674,10 +1674,6 @@
       dl($canvas, safe(`graph_${mode}_${stamp}`));
     }
   });
-// Register SW (offline)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
-  }
 
   setMetricOptions();
   load().then(()=>{

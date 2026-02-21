@@ -1205,9 +1205,9 @@
     if(!MANIFEST){ return; }
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
-    const bLic = $compare && $compare.value ? $compare.value : '';
+    const aLic = selected[0] || '';
+    const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
-    if($club && $club.checked) await ensureClub();
     syncCanvasSize();
     // Small fade to make transitions less harsh on mobile
     try{
@@ -1230,8 +1230,6 @@
     $exportBtn.disabled = false;
 
     // Comparison rules: if compare selected, we enforce A vs B on line modes too
-    const aLic = selected[0] || '';
-    const bLic = ($compare.value || '');
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if($club){
     if(isLineMode && hasB){

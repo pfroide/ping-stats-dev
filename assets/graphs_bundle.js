@@ -95,6 +95,36 @@
     .g-card.g-focus .g-title{ margin-top:8px; }
     .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:62vh; }
     .g-card.g-focus .g-legend{ max-width:none; }
+
+    /* Player photos (Focus B + Sheet C) */
+    .g-focushdr{ position:relative; border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; padding:10px 12px; margin: 2px 0 10px; min-height:92px; }
+    .g-focushdr .bg{ position:absolute; inset:0; display:flex; }
+    .g-focushdr .bgHalf{ flex:1; background-size:cover; background-position:50% 18%; filter: blur(10px) saturate(1.15); transform: scale(1.12); }
+    .g-focushdr .bgShade{ position:absolute; inset:0; background: linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.52), rgba(0,0,0,.72)); }
+    .g-focushdr .inner{ position:relative; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .g-focushdr .pCard{ display:flex; align-items:center; gap:10px; background: rgba(15,18,28,.55); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:8px 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); max-width:46%; min-width:0; }
+    .g-focushdr .pImg{ width:64px; height:64px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.14); flex:0 0 auto; background: rgba(255,255,255,.04); }
+    .g-focushdr .pImg img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; display:block; }
+    .g-focushdr .pTxt{ min-width:0; }
+    .g-focushdr .pName{ font-weight:800; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .g-focushdr .pSub{ font-size:11px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .g-focushdr .vs{ font-weight:900; letter-spacing:.08em; opacity:.9; padding: 0 6px; }
+    @media (max-width:560px){
+      .g-focushdr .inner{ flex-direction:column; align-items:stretch; }
+      .g-focushdr .pCard{ max-width:none; justify-content:space-between; }
+      .g-focushdr .vs{ text-align:center; }
+    }
+
+    .g-sheet .hdr{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .g-sheet .hdr .left{ display:flex; gap:12px; align-items:center; min-width:0; }
+    .g-sheet .photo{ width:88px; height:112px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); flex:0 0 auto; }
+    .g-sheet .photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; display:block; }
+    .g-sheet .meta{ min-width:0; }
+    @media (max-width:560px){
+      .g-sheet .hdr{ flex-direction:column; }
+      .g-sheet .photo{ width:78px; height:98px; }
+    }
+
   `;
   root.appendChild(style);
 
@@ -159,6 +189,32 @@
         <div id="gPills" class="g-pills"></div>
       </div>
 
+
+      <div id="gFocusHeader" class="g-focushdr" style="display:none">
+        <div class="bg">
+          <div class="bgHalf" id="gFbgL"></div>
+          <div class="bgHalf" id="gFbgR"></div>
+          <div class="bgShade"></div>
+        </div>
+        <div class="inner">
+          <div class="pCard" id="gFcardA">
+            <div class="pImg"><img id="gFimgA" alt=""/></div>
+            <div class="pTxt">
+              <div class="pName" id="gFnameA">—</div>
+              <div class="pSub" id="gFsubA"></div>
+            </div>
+          </div>
+          <div class="vs" id="gFvs">VS</div>
+          <div class="pCard" id="gFcardB">
+            <div class="pTxt" style="text-align:right">
+              <div class="pName" id="gFnameB">—</div>
+              <div class="pSub" id="gFsubB"></div>
+            </div>
+            <div class="pImg"><img id="gFimgB" alt=""/></div>
+          </div>
+        </div>
+      </div>
+
       <div class="g-title" id="gTitle"></div>
       <div id="gTip" class="g-tip" style="display:none"></div>
       <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
@@ -169,9 +225,12 @@
 
       <div class="g-sheet" id="gSheetPop"><div class="box">
         <div class="hdr">
-          <div>
-            <div class="nm" id="gSheetName">Fiche joueur</div>
-            <div class="g-muted" style="font-size:12px" id="gSheetSub"></div>
+          <div class="left">
+            <div class="photo"><img id="gSheetPhoto" alt=""/></div>
+            <div class="meta">
+              <div class="nm" id="gSheetName">Fiche joueur</div>
+              <div class="g-muted" style="font-size:12px" id="gSheetSub"></div>
+            </div>
           </div>
           <div class="g-row" style="gap:8px;">
             <button id="gSheetDetails" class="g-btn" type="button">Détails</button>
@@ -218,6 +277,17 @@
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
   const $sheetBtn = el('gSheet');
+  const $focusHeader = el('gFocusHeader');
+  const $fbgL = el('gFbgL');
+  const $fbgR = el('gFbgR');
+  const $fimgA = el('gFimgA');
+  const $fimgB = el('gFimgB');
+  const $fnameA = el('gFnameA');
+  const $fnameB = el('gFnameB');
+  const $fsubA = el('gFsubA');
+  const $fsubB = el('gFsubB');
+  const $fcardB = el('gFcardB');
+  const $fvs = el('gFvs');
   const $focusBar = el('gFocusBar');
   const $focusClose = el('gFocusClose');
   const $focusTitle = el('gFocusTitle');
@@ -233,6 +303,7 @@
   const $scroll = el('gScroll');
   const $compareCards = el('gCompareCards');
   const $sheetPop = el('gSheetPop');
+  const $sheetPhoto = el('gSheetPhoto');
   const $sheetName = el('gSheetName');
   const $sheetSub = el('gSheetSub');
   const $sheetTiles = el('gSheetTiles');
@@ -289,10 +360,15 @@
     return (x*100).toFixed(0) + '%';
   }
 
+  let _sheetLic = '';
+
   function openSheetFor(lic){
     if(!lic) return;
+    _sheetLic = lic;
     const p = PLAYERS[lic];
     if(!p) return;
+    // photo
+    if($sheetPhoto){ setPhotoEl($sheetPhoto, lic); $sheetPhoto.parentElement && ($sheetPhoto.parentElement.style.display=''); }
     const s = p.summary || {};
     $sheetName.textContent = (p.name || lic);
     const m = Number(s.matches||0);
@@ -540,6 +616,7 @@
     }
     renderPills();
     await render();
+    if(_isFocus) updateFocusHeader();
   });
 
   $clearPlayers.addEventListener('click', ()=>{
@@ -1610,11 +1687,51 @@
   });
   $canvas.addEventListener('pointerleave', hideTip);
 
+
+function _summaryLine(lic){
+  const p = PLAYERS[lic];
+  if(!p) return '';
+  const s = p.summary || {};
+  const m = Number(s.matches||0);
+  const w = Number(s.wins||0);
+  const l = Number(s.losses||0);
+  return `${m} matchs · ${w} V · ${l} D`;
+}
+
+function updateFocusHeader(){
+  if(!$focusHeader) return;
+  const aLic = ($player && $player.value) ? $player.value : (selected[0]||'');
+  const bLic = ($compare && $compare.value) ? $compare.value : '';
+  const pA = PLAYERS[aLic];
+  const pB = PLAYERS[bLic];
+
+  if($fnameA) $fnameA.textContent = pA ? (pA.name||aLic) : (aLic||'—');
+  if($fsubA) $fsubA.textContent = aLic ? _summaryLine(aLic) : '';
+  if($fnameB) $fnameB.textContent = pB ? (pB.name||bLic) : (bLic||'');
+  if($fsubB) $fsubB.textContent = bLic ? _summaryLine(bLic) : '';
+
+  setPhotoEl($fimgA, aLic);
+  setBgEl($fbgL, aLic);
+
+  if(bLic){
+    if($fcardB) $fcardB.style.display = '';
+    if($fvs) $fvs.style.display = '';
+    setPhotoEl($fimgB, bLic);
+    setBgEl($fbgR, bLic);
+  }else{
+    if($fcardB) $fcardB.style.display = 'none';
+    if($fvs) $fvs.style.display = 'none';
+    if($fbgR) $fbgR.style.backgroundImage = '';
+  }
+}
+
   // Focus mode (fullscreen)
   let _isFocus = false;
   function setFocus(on){
     _isFocus = !!on;
     wrap.classList.toggle('g-focus', _isFocus);
+    if($focusHeader) $focusHeader.style.display = _isFocus ? 'block' : 'none';
+    if(_isFocus) updateFocusHeader();
     if($focus){
       $focus.textContent = _isFocus ? '← Retour' : '⤢ Focus';
       $focus.setAttribute('aria-pressed', _isFocus ? 'true' : 'false');
@@ -1642,6 +1759,7 @@
       if(first) addPlayer(first);
     }
     render();
+    if(_isFocus) updateFocusHeader();
   });
   if($club) $club.addEventListener('change', render);
 
@@ -1656,7 +1774,220 @@
   if($ctxClose) $ctxClose.addEventListener('change', ctxChanged);
   if($scroll) $scroll.addEventListener('input', ()=> render());
 
-  $exportBtn.addEventListener('click', ()=>{
+
+function _rrPath(ctx,x,y,w,h,r){
+  const rr = Math.max(0, Math.min(r, Math.min(w,h)/2));
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+
+function _drawCover(ctx, img, dx, dy, dw, dh, posY=0.18){
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if(!iw || !ih) return;
+  const scale = Math.max(dw/iw, dh/ih);
+  const sw = dw/scale;
+  const sh = dh/scale;
+  const sx = (iw - sw)/2;
+  const centerY = ih * posY;
+  const sy = Math.max(0, Math.min(ih - sh, centerY - sh/2));
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function _drawRoundedImage(ctx, img, x, y, w, h, r, posY=0.18){
+  ctx.save();
+  _rrPath(ctx,x,y,w,h,r);
+  ctx.clip();
+  _drawCover(ctx, img, x, y, w, h, posY);
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.14)';
+  ctx.lineWidth = 1;
+  _rrPath(ctx,x,y,w,h,r);
+  ctx.stroke();
+  ctx.restore();
+}
+
+async function buildFocusExportCanvas(aLic, bLic){
+  const dpr = window.devicePixelRatio || 1;
+  const src = $canvas;
+  const w = src.width;
+  const h = src.height;
+  const headerCss = 110;
+  const header = Math.round(headerCss * dpr);
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h + header;
+  const ctx = out.getContext('2d');
+
+  ctx.fillStyle = 'rgb(12,14,22)';
+  ctx.fillRect(0,0,out.width,out.height);
+
+  const imgA = await getPhoto(aLic);
+  const imgB = bLic ? await getPhoto(bLic) : null;
+
+  // blurred backgrounds
+  if(imgA){
+    ctx.save();
+    ctx.filter = 'blur(12px) saturate(1.15)';
+    _drawCover(ctx, imgA, 0, 0, w/2, header, 0.18);
+    ctx.restore();
+  }
+  if(imgB){
+    ctx.save();
+    ctx.filter = 'blur(12px) saturate(1.15)';
+    _drawCover(ctx, imgB, w/2, 0, w/2, header, 0.18);
+    ctx.restore();
+  }
+  // shade
+  const g = ctx.createLinearGradient(0,0,w,0);
+  g.addColorStop(0,'rgba(0,0,0,.72)');
+  g.addColorStop(0.5,'rgba(0,0,0,.50)');
+  g.addColorStop(1,'rgba(0,0,0,.72)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,w,header);
+
+  const pad = Math.round(12*dpr);
+  const cardH = Math.round(72*dpr);
+  const cardY = Math.round((header - cardH)/2);
+  const cardW = Math.round(w*0.44);
+  const r = Math.round(14*dpr);
+
+  function card(x){
+    ctx.save();
+    ctx.fillStyle = 'rgba(15,18,28,.55)';
+    ctx.strokeStyle = 'rgba(255,255,255,.10)';
+    ctx.lineWidth = Math.max(1, Math.round(1*dpr));
+    _rrPath(ctx, x, cardY, cardW, cardH, r);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  card(pad);
+  if(imgA){
+    _drawRoundedImage(ctx, imgA, pad+Math.round(8*dpr), cardY+Math.round(8*dpr), Math.round(56*dpr), Math.round(56*dpr), Math.round(16*dpr), 0.18);
+  }
+
+  const xRight = w - pad - cardW;
+  if(imgB){
+    card(xRight);
+    _drawRoundedImage(ctx, imgB, xRight+cardW-Math.round(8*dpr)-Math.round(56*dpr), cardY+Math.round(8*dpr), Math.round(56*dpr), Math.round(56*dpr), Math.round(16*dpr), 0.18);
+  }
+
+  // Text
+  const pA = PLAYERS[aLic] || {};
+  const pB = PLAYERS[bLic] || {};
+  const nameA = pA.name || aLic || '—';
+  const nameB = pB.name || bLic || '';
+  const subA = aLic ? _summaryLine(aLic) : '';
+  const subB = bLic ? _summaryLine(bLic) : '';
+
+  ctx.fillStyle = 'rgba(240,244,255,.95)';
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.font = `${Math.round(13*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
+  const txA = pad + Math.round(8*dpr) + Math.round(56*dpr) + Math.round(10*dpr);
+  ctx.fillText(String(nameA).slice(0,40), txA, cardY + Math.round(30*dpr));
+  ctx.font = `${Math.round(11*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
+  ctx.fillStyle = 'rgba(240,244,255,.78)';
+  ctx.fillText(String(subA).slice(0,60), txA, cardY + Math.round(52*dpr));
+
+  if(imgB){
+    ctx.fillStyle = 'rgba(240,244,255,.95)';
+    ctx.font = `${Math.round(13*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
+    const txB = xRight + Math.round(12*dpr);
+    // right align inside card
+    ctx.textAlign = 'right';
+    ctx.fillText(String(nameB).slice(0,40), xRight + cardW - Math.round(8*dpr) - Math.round(56*dpr) - Math.round(10*dpr), cardY + Math.round(30*dpr));
+    ctx.font = `${Math.round(11*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
+    ctx.fillStyle = 'rgba(240,244,255,.78)';
+    ctx.fillText(String(subB).slice(0,60), xRight + cardW - Math.round(8*dpr) - Math.round(56*dpr) - Math.round(10*dpr), cardY + Math.round(52*dpr));
+    ctx.textAlign = 'left';
+  }
+
+  // VS
+  if(imgB){
+    ctx.fillStyle = 'rgba(240,244,255,.90)';
+    ctx.font = `${Math.round(16*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText('VS', w/2, cardY + Math.round(44*dpr));
+    ctx.textAlign = 'left';
+  }
+
+  // chart
+  ctx.drawImage(src, 0, header, w, h);
+  return out;
+}
+
+async function buildSheetExportCanvas(lic){
+  const dpr = window.devicePixelRatio || 1;
+  const src = $sheetCanvas;
+  const w = src.width;
+  const h = src.height;
+  const headerCss = 140;
+  const header = Math.round(headerCss * dpr);
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h + header;
+  const ctx = out.getContext('2d');
+
+  ctx.fillStyle = 'rgb(12,14,22)';
+  ctx.fillRect(0,0,out.width,out.height);
+
+  const img = await getPhoto(lic);
+  if(img){
+    ctx.save();
+    ctx.filter = 'blur(12px) saturate(1.15)';
+    _drawCover(ctx, img, 0, 0, w, header, 0.18);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(0,0,0,.65)';
+    ctx.fillRect(0,0,w,header);
+  }else{
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.fillRect(0,0,w,header);
+  }
+
+  const pad = Math.round(14*dpr);
+  const phW = Math.round(88*dpr);
+  const phH = Math.round(112*dpr);
+  const r = Math.round(16*dpr);
+  if(img){
+    _drawRoundedImage(ctx, img, pad, Math.round((header-phH)/2), phW, phH, r, 0.18);
+  }else{
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,.06)';
+    _rrPath(ctx, pad, Math.round((header-phH)/2), phW, phH, r);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const p = PLAYERS[lic] || {};
+  const s = p.summary || {};
+  const name = p.name || lic || 'Fiche joueur';
+  const m = Number(s.matches||0);
+  const wns = Number(s.wins||0);
+  const lss = Number(s.losses||0);
+  const sub = `${m} matchs · ${wns} V · ${lss} D`;
+
+  const tx = pad + phW + Math.round(14*dpr);
+  ctx.fillStyle = 'rgba(240,244,255,.96)';
+  ctx.font = `${Math.round(18*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
+  ctx.fillText(String(name).slice(0,60), tx, Math.round(header/2) - Math.round(6*dpr));
+  ctx.fillStyle = 'rgba(240,244,255,.80)';
+  ctx.font = `${Math.round(12*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
+  ctx.fillText(String(sub).slice(0,80), tx, Math.round(header/2) + Math.round(16*dpr));
+
+  ctx.drawImage(src, 0, header, w, h);
+  return out;
+}
+
+  $exportBtn.addEventListener('click', async ()=>{
     const mode = $mode.value;
     const view = $view.value;
     const now = new Date();
@@ -1671,6 +2002,24 @@
         a.click();
       }catch(e){ console.warn(e); }
     }
+
+const aLic = ($player && $player.value) ? $player.value : (selected[0]||'');
+const bLic = ($compare && $compare.value) ? $compare.value : '';
+
+// If sheet is open, export it (with photo header).
+if($sheetPop && $sheetPop.style.display !== 'none' && _sheetLic){
+  const out = await buildSheetExportCanvas(_sheetLic);
+  dl(out, safe(`fiche_${_sheetLic}_${stamp}`));
+  return;
+}
+
+// If we are in focus mode, export a composite (photo header + chart).
+if(_isFocus){
+  const out = await buildFocusExportCanvas(aLic, bLic);
+  dl(out, safe(`focus_${aLic}_${bLic||'aucun'}_${mode}_${stamp}`));
+  return;
+}
+
     if(view==='multiples' && $multi.style.display!=='none'){
       // Browsers often block multiple immediate downloads; stagger them slightly.
       const canv = Array.from($multi.querySelectorAll('canvas'));

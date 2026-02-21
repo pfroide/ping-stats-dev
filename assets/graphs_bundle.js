@@ -95,38 +95,93 @@
     .g-card.g-focus .g-title{ margin-top:8px; }
     .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:62vh; }
     .g-card.g-focus .g-legend{ max-width:none; }
-
-    /* Player photos (Focus B + Sheet C) */
-    .g-focushdr{ position:relative; border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; padding:10px 12px; margin: 2px 0 10px; min-height:92px; }
-    .g-focushdr .bg{ position:absolute; inset:0; display:flex; }
-    .g-focushdr .bgHalf{ flex:1; background-size:cover; background-position:50% 18%; filter: blur(10px) saturate(1.15); transform: scale(1.12); }
-    .g-focushdr .bgShade{ position:absolute; inset:0; background: linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.52), rgba(0,0,0,.72)); }
-    .g-focushdr .inner{ position:relative; display:flex; align-items:center; justify-content:space-between; gap:10px; }
-    .g-focushdr .pCard{ display:flex; align-items:center; gap:10px; background: rgba(15,18,28,.55); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:8px 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); max-width:46%; min-width:0; }
-    .g-focushdr .pImg{ width:64px; height:64px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.14); flex:0 0 auto; background: rgba(255,255,255,.04); }
-    .g-focushdr .pImg img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; display:block; }
-    .g-focushdr .pTxt{ min-width:0; }
-    .g-focushdr .pName{ font-weight:800; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .g-focushdr .pSub{ font-size:11px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .g-focushdr .vs{ font-weight:900; letter-spacing:.08em; opacity:.9; padding: 0 6px; }
-    @media (max-width:560px){
-      .g-focushdr .inner{ flex-direction:column; align-items:stretch; }
-      .g-focushdr .pCard{ max-width:none; justify-content:space-between; }
-      .g-focushdr .vs{ text-align:center; }
-    }
+.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
+    .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
+    .g-focusbg.g-a{ left:0; }
+    .g-focusbg.g-b{ right:0; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
+    .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
+    .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
+    .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; }
+    .g-fmeta{ min-width:0; }
+    .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
+    .g-vs{ font-weight:900; letter-spacing:1px; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.30); border:1px solid rgba(255,255,255,0.08); }
+    .g-x{ position:absolute; top:10px; right:10px; width:36px; height:36px; border-radius:12px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.08); color:#e9eef8; cursor:pointer; }
+    .g-x:hover{ background:rgba(0,0,0,0.44); }
 
     .g-sheet .hdr{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-    .g-sheet .hdr .left{ display:flex; gap:12px; align-items:center; min-width:0; }
-    .g-sheet .photo{ width:88px; height:112px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); flex:0 0 auto; }
-    .g-sheet .photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; display:block; }
-    .g-sheet .meta{ min-width:0; }
-    @media (max-width:560px){
-      .g-sheet .hdr{ flex-direction:column; }
-      .g-sheet .photo{ width:78px; height:98px; }
+    .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
+    .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
+    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; }
+    @media (max-width: 520px){
+      .g-focushdr-content{ flex-direction:column; gap:10px; padding:12px; }
+      .g-fplayer{ min-width:0; width:100%; max-width:none; }
+      .g-vs{ margin: -2px 0; }
+      .g-avatar{ width:64px; height:64px; }
+      .g-sheet .sh-photo{ width:84px; height:112px; }
     }
-
   `;
-  root.appendChild(style);
+  
+root.appendChild(style);
+
+  // Player photos (offline): images_joueurs/<licence>.(webp|jpg|jpeg|png)
+  const PHOTO_DIR = 'images_joueurs/';
+  const PHOTO_EXTS = ['webp','jpg','jpeg','png'];
+  const _PHOTO_CACHE = Object.create(null);
+
+  function photoCandidates(lic){
+    if(!lic) return [];
+    return PHOTO_EXTS.map(ext => PHOTO_DIR + lic + '.' + ext);
+  }
+
+  function setImgWithFallback(imgEl, lic){
+    if(!imgEl) return;
+    const cands = photoCandidates(lic);
+    let i = 0;
+    imgEl.referrerPolicy = 'no-referrer';
+    imgEl.loading = 'lazy';
+    imgEl.decoding = 'async';
+    imgEl.onerror = ()=>{
+      i++;
+      if(i < cands.length){
+        imgEl.src = cands[i];
+      }else{
+        imgEl.removeAttribute('src');
+      }
+    };
+    if(cands.length){
+      imgEl.src = cands[0];
+    }else{
+      imgEl.removeAttribute('src');
+    }
+  }
+
+  function loadImg(url){
+    return new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.referrerPolicy = 'no-referrer';
+      im.onload = ()=> resolve(im);
+      im.onerror = ()=> reject(new Error('img'));
+      im.src = url;
+    });
+  }
+
+  async function getPhoto(lic){
+    if(!lic) return null;
+    if(_PHOTO_CACHE[lic] !== undefined) return _PHOTO_CACHE[lic];
+    _PHOTO_CACHE[lic] = (async ()=>{
+      for(const url of photoCandidates(lic)){
+        try{
+          const img = await loadImg(url);
+          return {url, img};
+        }catch(e){}
+      }
+      return null;
+    })();
+    return _PHOTO_CACHE[lic];
+  }
 
   const wrap = document.createElement('div');
   wrap.className = 'g-card';
@@ -150,6 +205,29 @@
         </select>
         <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
         <button id="gSheet" class="g-btn" type="button">Fiche</button>
+      </div>
+
+      <div class="g-focushdr" id="gFocusHdr" style="display:none">
+        <div class="g-focusbg g-a"><img id="gFocusBgA" alt=""/></div>
+        <div class="g-focusbg g-b"><img id="gFocusBgB" alt=""/></div>
+        <div class="g-focushdr-content">
+          <div class="g-fplayer" id="gFocusCardA">
+            <div class="g-avatar"><img id="gFocusAvatarA" alt=""/></div>
+            <div class="g-fmeta">
+              <div class="g-fname" id="gFocusNameA">—</div>
+              <div class="g-fsub" id="gFocusSubA"></div>
+            </div>
+          </div>
+          <div class="g-vs" id="gFocusVS">VS</div>
+          <div class="g-fplayer" id="gFocusCardB">
+            <div class="g-avatar"><img id="gFocusAvatarB" alt=""/></div>
+            <div class="g-fmeta">
+              <div class="g-fname" id="gFocusNameB">—</div>
+              <div class="g-fsub" id="gFocusSubB"></div>
+            </div>
+          </div>
+          <button id="gFocusClose" class="g-x" type="button" aria-label="Fermer">✕</button>
+        </div>
       </div>
 
       <div class="g-grid g-more" id="gMoreFilters" style="gap:10px;">
@@ -189,32 +267,6 @@
         <div id="gPills" class="g-pills"></div>
       </div>
 
-
-      <div id="gFocusHeader" class="g-focushdr" style="display:none">
-        <div class="bg">
-          <div class="bgHalf" id="gFbgL"></div>
-          <div class="bgHalf" id="gFbgR"></div>
-          <div class="bgShade"></div>
-        </div>
-        <div class="inner">
-          <div class="pCard" id="gFcardA">
-            <div class="pImg"><img id="gFimgA" alt=""/></div>
-            <div class="pTxt">
-              <div class="pName" id="gFnameA">—</div>
-              <div class="pSub" id="gFsubA"></div>
-            </div>
-          </div>
-          <div class="vs" id="gFvs">VS</div>
-          <div class="pCard" id="gFcardB">
-            <div class="pTxt" style="text-align:right">
-              <div class="pName" id="gFnameB">—</div>
-              <div class="pSub" id="gFsubB"></div>
-            </div>
-            <div class="pImg"><img id="gFimgB" alt=""/></div>
-          </div>
-        </div>
-      </div>
-
       <div class="g-title" id="gTitle"></div>
       <div id="gTip" class="g-tip" style="display:none"></div>
       <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
@@ -225,9 +277,9 @@
 
       <div class="g-sheet" id="gSheetPop"><div class="box">
         <div class="hdr">
-          <div class="left">
-            <div class="photo"><img id="gSheetPhoto" alt=""/></div>
-            <div class="meta">
+          <div class="sh-left">
+            <div class="sh-photo"><img id="gSheetPhoto" alt=""/></div>
+            <div>
               <div class="nm" id="gSheetName">Fiche joueur</div>
               <div class="g-muted" style="font-size:12px" id="gSheetSub"></div>
             </div>
@@ -277,17 +329,6 @@
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
   const $sheetBtn = el('gSheet');
-  const $focusHeader = el('gFocusHeader');
-  const $fbgL = el('gFbgL');
-  const $fbgR = el('gFbgR');
-  const $fimgA = el('gFimgA');
-  const $fimgB = el('gFimgB');
-  const $fnameA = el('gFnameA');
-  const $fnameB = el('gFnameB');
-  const $fsubA = el('gFsubA');
-  const $fsubB = el('gFsubB');
-  const $fcardB = el('gFcardB');
-  const $fvs = el('gFvs');
   const $focusBar = el('gFocusBar');
   const $focusClose = el('gFocusClose');
   const $focusTitle = el('gFocusTitle');
@@ -303,9 +344,19 @@
   const $scroll = el('gScroll');
   const $compareCards = el('gCompareCards');
   const $sheetPop = el('gSheetPop');
-  const $sheetPhoto = el('gSheetPhoto');
   const $sheetName = el('gSheetName');
   const $sheetSub = el('gSheetSub');
+  const $sheetPhoto = el('gSheetPhoto');
+  const $focusHdr = el('gFocusHdr');
+  const $focusBgA = el('gFocusBgA');
+  const $focusBgB = el('gFocusBgB');
+  const $focusAvatarA = el('gFocusAvatarA');
+  const $focusAvatarB = el('gFocusAvatarB');
+  const $focusNameA = el('gFocusNameA');
+  const $focusNameB = el('gFocusNameB');
+  const $focusSubA = el('gFocusSubA');
+  const $focusSubB = el('gFocusSubB');
+  const $focusVS = el('gFocusVS');
   const $sheetTiles = el('gSheetTiles');
   const $sheetCanvas = el('gSheetCanvas');
   const $sheetClose = el('gSheetClose');
@@ -328,18 +379,21 @@
   function fitCanvas(canvas, minW, minH){
     if(!canvas) return {ctx:null, w:0, h:0, dpr:1};
     const r = canvas.getBoundingClientRect();
-    const w = Math.max(minW||320, Math.floor(r.width || 0));
-    const h = Math.max(minH||240, Math.floor(r.height || 0));
-    const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    const pw = Math.floor(w * dpr);
-    const ph = Math.floor(h * dpr);
+    const rw = Math.floor(r.width || canvas.clientWidth || 0);
+    const rh = Math.floor(r.height || canvas.clientHeight || 0);
+    // Do NOT override CSS size (keeps responsive layout stable on mobile)
+    const w = (rw>0 ? rw : (minW||320));
+    const h = (rh>0 ? rh : (minH||240));
+    const dpr = Math.max(1, (window.devicePixelRatio || 1));
+    const pw = Math.max(1, Math.floor(w * dpr));
+    const ph = Math.max(1, Math.floor(h * dpr));
     if(canvas.width !== pw) canvas.width = pw;
     if(canvas.height !== ph) canvas.height = ph;
     const c = canvas.getContext('2d');
-    if(c) c.setTransform(dpr,0,0,dpr,0,0);
-    // store logical size for later use
+    if(c){
+      c.setTransform(dpr,0,0,dpr,0,0);
+      c.imageSmoothingEnabled = true;
+    }
     canvas.__cw = w; canvas.__ch = h; canvas.__dpr = dpr;
     return {ctx:c, w:w, h:h, dpr:dpr};
   }
@@ -360,17 +414,13 @@
     return (x*100).toFixed(0) + '%';
   }
 
-  let _sheetLic = '';
-
   function openSheetFor(lic){
     if(!lic) return;
-    _sheetLic = lic;
     const p = PLAYERS[lic];
     if(!p) return;
-    // photo
-    if($sheetPhoto){ setPhotoEl($sheetPhoto, lic); $sheetPhoto.parentElement && ($sheetPhoto.parentElement.style.display=''); }
     const s = p.summary || {};
     $sheetName.textContent = (p.name || lic);
+    setImgWithFallback($sheetPhoto, lic);
     const m = Number(s.matches||0);
     const w = Number(s.wins||0);
     const l = Number(s.losses||0);
@@ -616,7 +666,6 @@
     }
     renderPills();
     await render();
-    if(_isFocus) updateFocusHeader();
   });
 
   $clearPlayers.addEventListener('click', ()=>{
@@ -1360,13 +1409,46 @@
 
   // Heatmap removed.
 
-  async function render(){
+  
+  function updateFocusHeader(aLic, bLic){
+    if(!$focusHdr) return;
+    if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
+    $focusHdr.style.display = 'block';
+    // Show/hide B side
+    const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
+    if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
+    if(document.getElementById('gFocusCardB')) document.getElementById('gFocusCardB').style.display = hasB ? 'flex' : 'none';
+
+    const pa = PLAYERS[aLic] || null;
+    const pb = hasB ? (PLAYERS[bLic] || null) : null;
+
+    if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
+    if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
+
+    function subText(p, lic){
+      if(!p) return '';
+      const s = p.summary || {};
+      const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
+      return `${m} matchs · ${w} V · ${l} D`;
+    }
+    if($focusSubA) $focusSubA.textContent = pa ? subText(pa, aLic) : '';
+    if($focusSubB) $focusSubB.textContent = pb ? subText(pb, bLic) : '';
+
+    // images
+    if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);
+    if($focusBgA) setImgWithFallback($focusBgA, aLic);
+    if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
+    if($focusBgB) setImgWithFallback($focusBgB, bLic);
+  }
+
+async function render(){
     if(!MANIFEST){ return; }
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
     const aLic = selected[0] || '';
     const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
+    updateFocusHeader(aLic, bLic);
     syncCanvasSize();
     // Small fade to make transitions less harsh on mobile
     try{
@@ -1687,64 +1769,22 @@
   });
   $canvas.addEventListener('pointerleave', hideTip);
 
-
-function _summaryLine(lic){
-  const p = PLAYERS[lic];
-  if(!p) return '';
-  const s = p.summary || {};
-  const m = Number(s.matches||0);
-  const w = Number(s.wins||0);
-  const l = Number(s.losses||0);
-  return `${m} matchs · ${w} V · ${l} D`;
-}
-
-function updateFocusHeader(){
-  if(!$focusHeader) return;
-  const aLic = ($player && $player.value) ? $player.value : (selected[0]||'');
-  const bLic = ($compare && $compare.value) ? $compare.value : '';
-  const pA = PLAYERS[aLic];
-  const pB = PLAYERS[bLic];
-
-  if($fnameA) $fnameA.textContent = pA ? (pA.name||aLic) : (aLic||'—');
-  if($fsubA) $fsubA.textContent = aLic ? _summaryLine(aLic) : '';
-  if($fnameB) $fnameB.textContent = pB ? (pB.name||bLic) : (bLic||'');
-  if($fsubB) $fsubB.textContent = bLic ? _summaryLine(bLic) : '';
-
-  setPhotoEl($fimgA, aLic);
-  setBgEl($fbgL, aLic);
-
-  if(bLic){
-    if($fcardB) $fcardB.style.display = '';
-    if($fvs) $fvs.style.display = '';
-    setPhotoEl($fimgB, bLic);
-    setBgEl($fbgR, bLic);
-  }else{
-    if($fcardB) $fcardB.style.display = 'none';
-    if($fvs) $fvs.style.display = 'none';
-    if($fbgR) $fbgR.style.backgroundImage = '';
-  }
-}
-
   // Focus mode (fullscreen)
   let _isFocus = false;
   function setFocus(on){
     _isFocus = !!on;
     wrap.classList.toggle('g-focus', _isFocus);
-    if($focusHeader) $focusHeader.style.display = _isFocus ? 'block' : 'none';
-    if(_isFocus) updateFocusHeader();
     if($focus){
       $focus.textContent = _isFocus ? '← Retour' : '⤢ Focus';
       $focus.setAttribute('aria-pressed', _isFocus ? 'true' : 'false');
     }
-    // Keep controls visible in focus mode (no more dead-end). We only hide advanced filters via CSS.
-    if($focusBar) $focusBar.style.display = _isFocus ? 'flex' : 'none';
-    if($focusTitle) $focusTitle.textContent = $title ? $title.textContent : 'Graphiques';
+    if($focusHdr) $focusHdr.style.display = _isFocus ? 'block' : 'none';
     document.documentElement.style.overflow = _isFocus ? 'hidden' : '';
     document.body.style.overflow = _isFocus ? 'hidden' : '';
   }
-  if($focus) $focus.addEventListener('click', ()=> setFocus(!_isFocus));
-  if($focusClose) $focusClose.addEventListener('click', ()=> setFocus(false));
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus) setFocus(false); });
+  if($focus) $focus.addEventListener('click', ()=>{ setFocus(!_isFocus); render(); });
+  if($focusClose) $focusClose.addEventListener('click', ()=>{ setFocus(false); render(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus){ setFocus(false); render(); } });
 
   $metric.addEventListener('change', ()=>{ render(); hideTip(); });
   $chartType.addEventListener('change', ()=>{ render(); hideTip(); });
@@ -1759,7 +1799,6 @@ function updateFocusHeader(){
       if(first) addPlayer(first);
     }
     render();
-    if(_isFocus) updateFocusHeader();
   });
   if($club) $club.addEventListener('change', render);
 
@@ -1774,225 +1813,13 @@ function updateFocusHeader(){
   if($ctxClose) $ctxClose.addEventListener('change', ctxChanged);
   if($scroll) $scroll.addEventListener('input', ()=> render());
 
-
-function _rrPath(ctx,x,y,w,h,r){
-  const rr = Math.max(0, Math.min(r, Math.min(w,h)/2));
-  ctx.beginPath();
-  ctx.moveTo(x+rr, y);
-  ctx.arcTo(x+w, y, x+w, y+h, rr);
-  ctx.arcTo(x+w, y+h, x, y+h, rr);
-  ctx.arcTo(x, y+h, x, y, rr);
-  ctx.arcTo(x, y, x+w, y, rr);
-  ctx.closePath();
-}
-
-function _drawCover(ctx, img, dx, dy, dw, dh, posY=0.18){
-  const iw = img.naturalWidth || img.width;
-  const ih = img.naturalHeight || img.height;
-  if(!iw || !ih) return;
-  const scale = Math.max(dw/iw, dh/ih);
-  const sw = dw/scale;
-  const sh = dh/scale;
-  const sx = (iw - sw)/2;
-  const centerY = ih * posY;
-  const sy = Math.max(0, Math.min(ih - sh, centerY - sh/2));
-  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-}
-
-function _drawRoundedImage(ctx, img, x, y, w, h, r, posY=0.18){
-  ctx.save();
-  _rrPath(ctx,x,y,w,h,r);
-  ctx.clip();
-  _drawCover(ctx, img, x, y, w, h, posY);
-  ctx.restore();
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,.14)';
-  ctx.lineWidth = 1;
-  _rrPath(ctx,x,y,w,h,r);
-  ctx.stroke();
-  ctx.restore();
-}
-
-async function buildFocusExportCanvas(aLic, bLic){
-  const dpr = window.devicePixelRatio || 1;
-  const src = $canvas;
-  const w = src.width;
-  const h = src.height;
-  const headerCss = 110;
-  const header = Math.round(headerCss * dpr);
-  const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h + header;
-  const ctx = out.getContext('2d');
-
-  ctx.fillStyle = 'rgb(12,14,22)';
-  ctx.fillRect(0,0,out.width,out.height);
-
-  const imgA = await getPhoto(aLic);
-  const imgB = bLic ? await getPhoto(bLic) : null;
-
-  // blurred backgrounds
-  if(imgA){
-    ctx.save();
-    ctx.filter = 'blur(12px) saturate(1.15)';
-    _drawCover(ctx, imgA, 0, 0, w/2, header, 0.18);
-    ctx.restore();
-  }
-  if(imgB){
-    ctx.save();
-    ctx.filter = 'blur(12px) saturate(1.15)';
-    _drawCover(ctx, imgB, w/2, 0, w/2, header, 0.18);
-    ctx.restore();
-  }
-  // shade
-  const g = ctx.createLinearGradient(0,0,w,0);
-  g.addColorStop(0,'rgba(0,0,0,.72)');
-  g.addColorStop(0.5,'rgba(0,0,0,.50)');
-  g.addColorStop(1,'rgba(0,0,0,.72)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0,0,w,header);
-
-  const pad = Math.round(12*dpr);
-  const cardH = Math.round(72*dpr);
-  const cardY = Math.round((header - cardH)/2);
-  const cardW = Math.round(w*0.44);
-  const r = Math.round(14*dpr);
-
-  function card(x){
-    ctx.save();
-    ctx.fillStyle = 'rgba(15,18,28,.55)';
-    ctx.strokeStyle = 'rgba(255,255,255,.10)';
-    ctx.lineWidth = Math.max(1, Math.round(1*dpr));
-    _rrPath(ctx, x, cardY, cardW, cardH, r);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  card(pad);
-  if(imgA){
-    _drawRoundedImage(ctx, imgA, pad+Math.round(8*dpr), cardY+Math.round(8*dpr), Math.round(56*dpr), Math.round(56*dpr), Math.round(16*dpr), 0.18);
-  }
-
-  const xRight = w - pad - cardW;
-  if(imgB){
-    card(xRight);
-    _drawRoundedImage(ctx, imgB, xRight+cardW-Math.round(8*dpr)-Math.round(56*dpr), cardY+Math.round(8*dpr), Math.round(56*dpr), Math.round(56*dpr), Math.round(16*dpr), 0.18);
-  }
-
-  // Text
-  const pA = PLAYERS[aLic] || {};
-  const pB = PLAYERS[bLic] || {};
-  const nameA = pA.name || aLic || '—';
-  const nameB = pB.name || bLic || '';
-  const subA = aLic ? _summaryLine(aLic) : '';
-  const subB = bLic ? _summaryLine(bLic) : '';
-
-  ctx.fillStyle = 'rgba(240,244,255,.95)';
-  ctx.textBaseline = 'alphabetic';
-
-  ctx.font = `${Math.round(13*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-  const txA = pad + Math.round(8*dpr) + Math.round(56*dpr) + Math.round(10*dpr);
-  ctx.fillText(String(nameA).slice(0,40), txA, cardY + Math.round(30*dpr));
-  ctx.font = `${Math.round(11*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-  ctx.fillStyle = 'rgba(240,244,255,.78)';
-  ctx.fillText(String(subA).slice(0,60), txA, cardY + Math.round(52*dpr));
-
-  if(imgB){
-    ctx.fillStyle = 'rgba(240,244,255,.95)';
-    ctx.font = `${Math.round(13*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-    const txB = xRight + Math.round(12*dpr);
-    // right align inside card
-    ctx.textAlign = 'right';
-    ctx.fillText(String(nameB).slice(0,40), xRight + cardW - Math.round(8*dpr) - Math.round(56*dpr) - Math.round(10*dpr), cardY + Math.round(30*dpr));
-    ctx.font = `${Math.round(11*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-    ctx.fillStyle = 'rgba(240,244,255,.78)';
-    ctx.fillText(String(subB).slice(0,60), xRight + cardW - Math.round(8*dpr) - Math.round(56*dpr) - Math.round(10*dpr), cardY + Math.round(52*dpr));
-    ctx.textAlign = 'left';
-  }
-
-  // VS
-  if(imgB){
-    ctx.fillStyle = 'rgba(240,244,255,.90)';
-    ctx.font = `${Math.round(16*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-    ctx.textAlign = 'center';
-    ctx.fillText('VS', w/2, cardY + Math.round(44*dpr));
-    ctx.textAlign = 'left';
-  }
-
-  // chart
-  ctx.drawImage(src, 0, header, w, h);
-  return out;
-}
-
-async function buildSheetExportCanvas(lic){
-  const dpr = window.devicePixelRatio || 1;
-  const src = $sheetCanvas;
-  const w = src.width;
-  const h = src.height;
-  const headerCss = 140;
-  const header = Math.round(headerCss * dpr);
-  const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h + header;
-  const ctx = out.getContext('2d');
-
-  ctx.fillStyle = 'rgb(12,14,22)';
-  ctx.fillRect(0,0,out.width,out.height);
-
-  const img = await getPhoto(lic);
-  if(img){
-    ctx.save();
-    ctx.filter = 'blur(12px) saturate(1.15)';
-    _drawCover(ctx, img, 0, 0, w, header, 0.18);
-    ctx.restore();
-    ctx.fillStyle = 'rgba(0,0,0,.65)';
-    ctx.fillRect(0,0,w,header);
-  }else{
-    ctx.fillStyle = 'rgba(0,0,0,.35)';
-    ctx.fillRect(0,0,w,header);
-  }
-
-  const pad = Math.round(14*dpr);
-  const phW = Math.round(88*dpr);
-  const phH = Math.round(112*dpr);
-  const r = Math.round(16*dpr);
-  if(img){
-    _drawRoundedImage(ctx, img, pad, Math.round((header-phH)/2), phW, phH, r, 0.18);
-  }else{
-    ctx.save();
-    ctx.fillStyle = 'rgba(255,255,255,.06)';
-    _rrPath(ctx, pad, Math.round((header-phH)/2), phW, phH, r);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  const p = PLAYERS[lic] || {};
-  const s = p.summary || {};
-  const name = p.name || lic || 'Fiche joueur';
-  const m = Number(s.matches||0);
-  const wns = Number(s.wins||0);
-  const lss = Number(s.losses||0);
-  const sub = `${m} matchs · ${wns} V · ${lss} D`;
-
-  const tx = pad + phW + Math.round(14*dpr);
-  ctx.fillStyle = 'rgba(240,244,255,.96)';
-  ctx.font = `${Math.round(18*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-  ctx.fillText(String(name).slice(0,60), tx, Math.round(header/2) - Math.round(6*dpr));
-  ctx.fillStyle = 'rgba(240,244,255,.80)';
-  ctx.font = `${Math.round(12*dpr)}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-  ctx.fillText(String(sub).slice(0,80), tx, Math.round(header/2) + Math.round(16*dpr));
-
-  ctx.drawImage(src, 0, header, w, h);
-  return out;
-}
-
   $exportBtn.addEventListener('click', async ()=>{
     const mode = $mode.value;
     const view = $view.value;
     const now = new Date();
     const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');
-    const safe = (s)=> (s||'graph').replace(/[^a-z0-9_-]+/gi,'_').slice(0,60);
+    const safe = (s)=> String(s||'').normalize('NFKD').replace(/[^\w\d\- ]+/g,'').trim().replace(/\s+/g,'_').slice(0,60);
+
     function dl(canvas, name){
       try{
         const url = canvas.toDataURL('image/png');
@@ -2003,25 +1830,198 @@ async function buildSheetExportCanvas(lic){
       }catch(e){ console.warn(e); }
     }
 
-const aLic = ($player && $player.value) ? $player.value : (selected[0]||'');
-const bLic = ($compare && $compare.value) ? $compare.value : '';
+    function drawCover(c, img, x, y, w, h){
+      const iw = img.width || 1, ih = img.height || 1;
+      const ir = iw / ih, tr = w / h;
+      let sx=0, sy=0, sw=iw, sh=ih;
+      if(ir > tr){
+        sh = ih;
+        sw = Math.max(1, Math.floor(sh * tr));
+        sx = Math.floor((iw - sw) / 2);
+      }else{
+        sw = iw;
+        sh = Math.max(1, Math.floor(sw / tr));
+        sy = Math.floor((ih - sh) / 2);
+      }
+      c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
 
-// If sheet is open, export it (with photo header).
-if($sheetPop && $sheetPop.style.display !== 'none' && _sheetLic){
-  const out = await buildSheetExportCanvas(_sheetLic);
-  dl(out, safe(`fiche_${_sheetLic}_${stamp}`));
-  return;
-}
+    function roundRectPath(c, x, y, w, h, r){
+      const rr = Math.min(r, w/2, h/2);
+      c.beginPath();
+      c.moveTo(x+rr, y);
+      c.arcTo(x+w, y, x+w, y+h, rr);
+      c.arcTo(x+w, y+h, x, y+h, rr);
+      c.arcTo(x, y+h, x, y, rr);
+      c.arcTo(x, y, x+w, y, rr);
+      c.closePath();
+    }
 
-// If we are in focus mode, export a composite (photo header + chart).
-if(_isFocus){
-  const out = await buildFocusExportCanvas(aLic, bLic);
-  dl(out, safe(`focus_${aLic}_${bLic||'aucun'}_${mode}_${stamp}`));
-  return;
-}
+    async function buildCompositeFocus(){
+      const base = $canvas;
+      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
+      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 420);
+      const headerH = 140;
+      const pad = 12;
 
+      const aLic = selected[0] || '';
+      const bLic = ($compare && $compare.value) ? $compare.value : '';
+      const aP = await getPhoto(aLic);
+      const bP = await getPhoto(bLic);
+
+      const out = document.createElement('canvas');
+      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
+      out.width = Math.floor(w * dpr);
+      out.height = Math.floor((headerH + pad + h) * dpr);
+      const c = out.getContext('2d');
+      c.setTransform(dpr,0,0,dpr,0,0);
+
+      // bg
+      c.fillStyle = '#0b1220';
+      c.fillRect(0,0,w,headerH+pad+h);
+
+      // blurred split background
+      c.save();
+      c.globalAlpha = 0.95;
+      c.filter = 'blur(10px) brightness(0.55)';
+      if(aP && aP.img) drawCover(c, aP.img, 0, 0, w/2, headerH);
+      if(bP && bP.img) drawCover(c, bP.img, w/2, 0, w/2, headerH);
+      c.restore();
+      c.filter = 'none';
+
+      // shade
+      c.fillStyle = 'rgba(0,0,0,0.25)';
+      c.fillRect(0,0,w,headerH);
+
+      // cards
+      const cardW = Math.min(360, Math.floor((w - 3*pad) / 2));
+      const cardH = 92;
+      const y = Math.floor((headerH - cardH) / 2);
+      const xA = Math.max(pad, Math.floor((w/2 - cardW) / 2));
+      const xB = Math.min(w - pad - cardW, Math.floor(w/2 + (w/2 - cardW) / 2));
+
+      function drawCard(x, lic, photo, color){
+        // box
+        c.save();
+        c.fillStyle = 'rgba(9,14,25,0.72)';
+        c.strokeStyle = 'rgba(255,255,255,0.08)';
+        c.lineWidth = 1;
+        roundRectPath(c, x, y, cardW, cardH, 16);
+        c.fill(); c.stroke();
+        c.restore();
+
+        // avatar
+        const av = 64;
+        const ax = x + 12, ay = y + Math.floor((cardH - av)/2);
+        c.save();
+        roundRectPath(c, ax, ay, av, av, 16);
+        c.clip();
+        if(photo && photo.img){
+          drawCover(c, photo.img, ax, ay, av, av);
+        }else{
+          c.fillStyle = 'rgba(0,0,0,0.22)';
+          c.fillRect(ax,ay,av,av);
+        }
+        c.restore();
+
+        // glow border
+        c.save();
+        c.strokeStyle = color || 'rgba(255,255,255,0.12)';
+        c.lineWidth = 2;
+        roundRectPath(c, ax, ay, av, av, 16);
+        c.stroke();
+        c.restore();
+
+        // text
+        const p = PLAYERS[lic] || null;
+        const name = p ? (p.name || lic) : (lic || '—');
+        const s = p ? (p.summary || {}) : {};
+        const m = Number(s.matches||0), w1 = Number(s.wins||0), l1 = Number(s.losses||0);
+        const sub = p ? `${m} matchs · ${w1} V · ${l1} D` : '';
+
+        c.fillStyle = '#e9eef8';
+        c.font = '800 15px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.textBaseline = 'top';
+        c.fillText(name, x + 12 + av + 10, y + 22);
+        c.fillStyle = 'rgba(255,255,255,0.75)';
+        c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.fillText(sub, x + 12 + av + 10, y + 44);
+      }
+
+      drawCard(xA, aLic, aP, 'rgba(120,200,255,0.55)');
+      if(bLic){
+        drawCard(xB, bLic, bP, 'rgba(255,160,120,0.55)');
+        // VS
+        c.save();
+        c.fillStyle = 'rgba(0,0,0,0.32)';
+        c.strokeStyle = 'rgba(255,255,255,0.08)';
+        c.lineWidth = 1;
+        const vsW=52, vsH=28;
+        const vx = Math.floor((w - vsW)/2), vy = Math.floor((headerH - vsH)/2);
+        roundRectPath(c, vx, vy, vsW, vsH, 14);
+        c.fill(); c.stroke();
+        c.fillStyle = '#e9eef8';
+        c.font = '900 13px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.textBaseline = 'middle';
+        c.textAlign = 'center';
+        c.fillText('VS', vx + vsW/2, vy + vsH/2);
+        c.restore();
+      }
+
+      // graph
+      c.drawImage(base, 0, headerH + pad, w, h);
+      return out;
+    }
+
+    async function buildCompositeSheet(){
+      const base = $sheetCanvas;
+      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
+      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 340);
+      const headerH = 150;
+      const pad = 12;
+
+      // Try to infer current lic from sheet name match; fallback: selected[0]
+      const lic = selected[0] || '';
+      const photo = await getPhoto(lic);
+
+      const out = document.createElement('canvas');
+      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
+      out.width = Math.floor(w * dpr);
+      out.height = Math.floor((headerH + pad + h) * dpr);
+      const c = out.getContext('2d');
+      c.setTransform(dpr,0,0,dpr,0,0);
+
+      c.fillStyle = '#0b1220';
+      c.fillRect(0,0,w,headerH+pad+h);
+
+      // photo panel
+      const phW = 110, phH = 140;
+      const px = pad, py = Math.floor((headerH - phH)/2);
+      c.save();
+      roundRectPath(c, px, py, phW, phH, 16);
+      c.clip();
+      if(photo && photo.img) drawCover(c, photo.img, px, py, phW, phH);
+      else { c.fillStyle='rgba(0,0,0,0.22)'; c.fillRect(px,py,phW,phH); }
+      c.restore();
+      c.strokeStyle='rgba(255,255,255,0.10)'; c.lineWidth=1;
+      roundRectPath(c, px, py, phW, phH, 16); c.stroke();
+
+      const name = $sheetName ? ($sheetName.textContent||'') : '';
+      const sub  = $sheetSub ? ($sheetSub.textContent||'') : '';
+      c.fillStyle='#e9eef8';
+      c.font='800 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      c.textBaseline='top';
+      c.fillText(name, px+phW+12, py+10);
+      c.fillStyle='rgba(255,255,255,0.75)';
+      c.font='12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      c.fillText(sub, px+phW+12, py+40);
+
+      c.drawImage(base, 0, headerH + pad, w, h);
+      return out;
+    }
+
+    // If we are in mini-graphs view, keep current behavior (multiple downloads)
     if(view==='multiples' && $multi.style.display!=='none'){
-      // Browsers often block multiple immediate downloads; stagger them slightly.
       const canv = Array.from($multi.querySelectorAll('canvas'));
       canv.forEach((cv,i)=>{
         const titleEl = cv.parentElement && cv.parentElement.querySelector('div');
@@ -2029,9 +2029,24 @@ if(_isFocus){
         const fname = safe(`graph_${mode}_${who}_${stamp}`);
         window.setTimeout(()=> dl(cv, fname), i*250);
       });
-    }else{
-      dl($canvas, safe(`graph_${mode}_${stamp}`));
+      return;
     }
+
+    // In Focus -> export composite with photos
+    try{
+      if(_isFocus){
+        const out = await buildCompositeFocus();
+        dl(out, safe(`focus_${mode}_${stamp}`));
+        return;
+      }
+      if($sheetPop && $sheetPop.style.display !== 'none'){
+        const out = await buildCompositeSheet();
+        dl(out, safe(`fiche_${mode}_${stamp}`));
+        return;
+      }
+    }catch(e){ console.warn(e); }
+
+    dl($canvas, safe(`graph_${mode}_${stamp}`));
   });
 
   setMetricOptions();

@@ -107,11 +107,11 @@
     .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
-    .g-focusbg img{ width:100%; height:100%; object-fit:cover; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
     .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    .g-avatar img{ width:100%; height:100%; object-fit:cover; }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
@@ -122,7 +122,7 @@
     .g-sheet .hdr{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
     .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
     .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
-    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; }
+    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     @media (max-width: 520px){
       .g-focushdr-content{ flex-direction:column; gap:10px; padding:12px; }
       .g-fplayer{ min-width:0; width:100%; max-width:none; }
@@ -1280,11 +1280,47 @@ root.appendChild(style);
     return h % 360;
   }
 
-  function drawRadar(a, b, axes){
+  // object-fit: cover with vertical bias, for on-canvas backgrounds
+  function drawCoverBias(c, img, x, y, w, h, biasY){
+    if(!img) return;
+    const iw = img.width || 1, ih = img.height || 1;
+    const ir = iw / ih, tr = w / h;
+    const by = (biasY==null || !isFinite(biasY)) ? 0.5 : Math.max(0, Math.min(1, biasY));
+    let sx=0, sy=0, sw=iw, sh=ih;
+    if(ir > tr){
+      sh = ih;
+      sw = Math.max(1, Math.floor(sh * tr));
+      sx = Math.floor((iw - sw) / 2);
+    }else{
+      sw = iw;
+      sh = Math.max(1, Math.floor(sw / tr));
+      sy = Math.floor((ih - sh) * by);
+    }
+    c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+
+  function drawRadar(a, b, axes, bgA, bgB){
     const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
     const R=Math.min(w,h)*0.38;
     ctx.clearRect(0,0,w,h);
+
+    // Background portraits (desktop/tablet only). Keep mobile ultra-readable.
+    const isMobile = w < 620;
+    if(!isMobile && (bgA || bgB)){
+      const gap = R * 0.95;
+      const leftW  = Math.max(0, Math.floor(cx - gap));
+      const rightX = Math.min(w, Math.ceil(cx + gap));
+      const rightW = Math.max(0, Math.floor(w - rightX));
+      ctx.save();
+      ctx.globalAlpha = 0.14;
+      // blur + darken so labels stay readable
+      try{ ctx.filter = 'blur(2px) brightness(0.55)'; }catch(e){}
+      if(bgA && leftW > 60)  drawCoverBias(ctx, bgA, 0, 0, leftW, h, 0.18);
+      if(bgB && rightW > 60) drawCoverBias(ctx, bgB, rightX, 0, rightW, h, 0.18);
+      ctx.restore();
+      try{ ctx.filter = 'none'; }catch(e){}
+    }
     // rings
     ctx.strokeStyle='rgba(154,164,178,0.32)';
     for(let k=1;k<=4;k++){
@@ -1508,9 +1544,17 @@ async function render(){
       }else if(club){
         bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0), color: COLOR_CLUB };
       }
+
+      // Kiviat background portraits (subtle). Mobile keeps it clean.
+      let bgA = null, bgB = null;
+      try{ const pa = await getPhoto(aLic); bgA = pa && pa.img ? pa.img : null; }catch(e){}
+      if(hasB){
+        try{ const pb = await getPhoto(bLic); bgB = pb && pb.img ? pb.img : null; }catch(e){}
+      }
+
       setTitleText(`Kiviat profil — ${phaseLbl}`);
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
-      drawRadar(aSeries, bSeries, axes);
+      drawRadar(aSeries, bSeries, axes, bgA, bgB);
       $info.textContent = 'Kiviat: A vs ' + (bSeries? bSeries.label : '—');
 
       // A/B synthesis cards under the kiviat (mobile-friendly)
@@ -1838,18 +1882,23 @@ async function render(){
       }catch(e){ console.warn(e); }
     }
 
-    function drawCover(c, img, x, y, w, h){
+    // Like CSS object-fit: cover, but with a vertical bias.
+    // biasY in [0..1] (0 = keep top, 0.5 = center, 1 = keep bottom)
+    function drawCover(c, img, x, y, w, h, biasY){
       const iw = img.width || 1, ih = img.height || 1;
       const ir = iw / ih, tr = w / h;
+      const by = (biasY==null || !isFinite(biasY)) ? 0.5 : Math.max(0, Math.min(1, biasY));
       let sx=0, sy=0, sw=iw, sh=ih;
       if(ir > tr){
+        // crop width
         sh = ih;
         sw = Math.max(1, Math.floor(sh * tr));
         sx = Math.floor((iw - sw) / 2);
       }else{
+        // crop height (use bias)
         sw = iw;
         sh = Math.max(1, Math.floor(sw / tr));
-        sy = Math.floor((ih - sh) / 2);
+        sy = Math.floor((ih - sh) * by);
       }
       c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
     }
@@ -1892,8 +1941,8 @@ async function render(){
       c.save();
       c.globalAlpha = 0.95;
       c.filter = 'blur(10px) brightness(0.55)';
-      if(aP && aP.img) drawCover(c, aP.img, 0, 0, w/2, headerH);
-      if(bP && bP.img) drawCover(c, bP.img, w/2, 0, w/2, headerH);
+      if(aP && aP.img) drawCover(c, aP.img, 0, 0, w/2, headerH, 0.18);
+      if(bP && bP.img) drawCover(c, bP.img, w/2, 0, w/2, headerH, 0.18);
       c.restore();
       c.filter = 'none';
 
@@ -1925,7 +1974,7 @@ async function render(){
         roundRectPath(c, ax, ay, av, av, 16);
         c.clip();
         if(photo && photo.img){
-          drawCover(c, photo.img, ax, ay, av, av);
+          drawCover(c, photo.img, ax, ay, av, av, 0.18);
         }else{
           c.fillStyle = 'rgba(0,0,0,0.22)';
           c.fillRect(ax,ay,av,av);
@@ -2008,7 +2057,7 @@ async function render(){
       c.save();
       roundRectPath(c, px, py, phW, phH, 16);
       c.clip();
-      if(photo && photo.img) drawCover(c, photo.img, px, py, phW, phH);
+      if(photo && photo.img) drawCover(c, photo.img, px, py, phW, phH, 0.18);
       else { c.fillStyle='rgba(0,0,0,0.22)'; c.fillRect(px,py,phW,phH); }
       c.restore();
       c.strokeStyle='rgba(255,255,255,0.10)'; c.lineWidth=1;

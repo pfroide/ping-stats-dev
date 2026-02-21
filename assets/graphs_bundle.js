@@ -253,23 +253,35 @@
   const $info = el('gInfo');
   const ctx = $canvas.getContext('2d');
 
+  // HiDPI canvas fitting (prevents blur in Focus/Fiche views)
+  function fitCanvas(canvas, minW, minH){
+    if(!canvas) return {ctx:null, w:0, h:0, dpr:1};
+    const r = canvas.getBoundingClientRect();
+    const w = Math.max(minW||320, Math.floor(r.width || 0));
+    const h = Math.max(minH||240, Math.floor(r.height || 0));
+    const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    const pw = Math.floor(w * dpr);
+    const ph = Math.floor(h * dpr);
+    if(canvas.width !== pw) canvas.width = pw;
+    if(canvas.height !== ph) canvas.height = ph;
+    const c = canvas.getContext('2d');
+    if(c) c.setTransform(dpr,0,0,dpr,0,0);
+    // store logical size for later use
+    canvas.__cw = w; canvas.__ch = h; canvas.__dpr = dpr;
+    return {ctx:c, w:w, h:h, dpr:dpr};
+  }
+
+  let _cw = 0, _ch = 0, _dpr = 1;
+
   function syncCanvasSize(){
-    if(!$canvas) return;
-    const r = $canvas.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(r.width || 0));
-    const h = Math.max(240, Math.floor(r.height || 0));
-    // Keep in CSS pixel space for simplicity (fast + predictable on mobile)
-    if($canvas.width !== w) $canvas.width = w;
-    if($canvas.height !== h) $canvas.height = h;
+    const f = fitCanvas($canvas, 320, 240);
+    _cw = f.w; _ch = f.h; _dpr = f.dpr;
   }
 
   function syncSheetCanvasSize(){
-    if(!$sheetCanvas) return;
-    const r = $sheetCanvas.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(r.width || 0));
-    const h = Math.max(240, Math.floor(r.height || 0));
-    if($sheetCanvas.width !== w) $sheetCanvas.width = w;
-    if($sheetCanvas.height !== h) $sheetCanvas.height = h;
+    fitCanvas($sheetCanvas, 320, 240);
   }
 
   function pct(x){
@@ -585,7 +597,7 @@
   });
 
   function clearCanvas(){
-    ctx.clearRect(0,0,$canvas.width,$canvas.height);
+    ctx.clearRect(0,0,(_cw||1),(_ch||1));
     ctx.fillStyle = 'rgba(0,0,0,0)';
   }
 
@@ -615,7 +627,22 @@
   }
 
   function cleanXLabel(s){
-    return (s||'').replace(/\s*#.*$/,'').trim();
+    s = (s||'').replace(/\s*#.*$/,'').trim();
+    // dd/mm/yyyy -> dd/mm (drop year for X axis readability)
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(.*)$/);
+    if(m){
+      const dd = String(m[1]).padStart(2,'0');
+      const mm = String(m[2]).padStart(2,'0');
+      return dd + '/' + mm + (m[4]||'');
+    }
+    // yyyy-mm-dd -> dd/mm
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(.*)$/);
+    if(m){
+      const dd = String(m[3]).padStart(2,'0');
+      const mm = String(m[2]).padStart(2,'0');
+      return dd + '/' + mm + (m[4]||'');
+    }
+    return s;
   }
 
   function kpiKeyForMetric(mode, metricKey){
@@ -696,7 +723,7 @@
     // title moved to HTML (better on mobile)
   }
 
-  function drawYAxis(ctxX, left, top, bottom, ymin, ymax){
+  function drawYAxis(ctxX, left, top, bottom, right, ymin, ymax){
     const ticks = 4;
     ctxX.font='12px system-ui';
     ctxX.fillStyle='rgba(154,164,178,0.9)';
@@ -709,7 +736,7 @@
       // grid
       ctxX.beginPath();
       ctxX.moveTo(left, yy);
-      ctxX.lineTo(ctxX.canvas.width-12, yy);
+      ctxX.lineTo(right, yy);
       ctxX.stroke();
       // label
       ctxX.fillText(fmtNum(v), 6, yy+4);
@@ -717,12 +744,12 @@
   }
 
   function drawAxes(){
-    const w=$canvas.width, h=$canvas.height;
+    const w=_cw, h=_ch;
     drawAxesBase(ctx, w, h);
   }
 
   function drawLine(labels, series){
-    const w=$canvas.width, h=$canvas.height;
+    const w=_cw, h=_ch;
     const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
@@ -735,14 +762,18 @@
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
     // y axis ticks + grid
-    drawYAxis(ctx, left, top, bottom, ymin, ymax);
+    drawYAxis(ctx, left, top, bottom, right, ymin, ymax);
 
     // x labels (sparse + rotated on dense charts)
     ctx.fillStyle='rgba(154,164,178,0.9)';
     ctx.font='12px system-ui';
     let step = Math.max(1, Math.floor(n/6));
     if(n>18) step = Math.max(step, Math.floor(n/4));
-    const rotate = n>10;
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
+    const rotate = hasDate || n>10;
     for(let i=0;i<n;i+=step){
       const t0 = cleanXLabel(labels[i]||'');
       const t = t0.length>14? (t0.slice(0,14)+'…') : t0;
@@ -751,7 +782,7 @@
       }else{
         ctx.save();
         ctx.translate(x(i)-6, h-26);
-        ctx.rotate(-0.55);
+        ctx.rotate(-0.7853981633974483);
         ctx.fillText(t, 0, 0);
         ctx.restore();
       }
@@ -817,7 +848,7 @@
   }
 
   function drawBar(labels, series){
-    const w=$canvas.width, h=$canvas.height;
+    const w=_cw, h=_ch;
     const ctxB=$canvas.getContext('2d');
     ctxB.clearRect(0,0,w,h);
     if(!labels || !labels.length){ drawAxesBase(ctxB,w,h); return; }
@@ -845,14 +876,18 @@
     const y = (v)=> bottom - (bottom-top)*((v-ymin)/(ymax-ymin));
 
     drawAxesBase(ctxB,w,h);
-    drawYAxis(ctxB,left,top,bottom,ymin,ymax);
+    drawYAxis(ctxB,left,top,bottom,right,ymin,ymax);
 
     // x labels (sparse + rotated on dense charts)
     ctxB.fillStyle='rgba(154,164,178,0.9)';
     ctxB.font='12px system-ui';
     let step = Math.max(1, Math.floor(n/6));
     if(n>18) step = Math.max(step, Math.floor(n/4));
-    const rotate = n>10;
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
+    const rotate = hasDate || n>10;
     for(let i=0;i<n;i+=step){
       const t0 = cleanXLabel(labels[i]||'');
       const t = t0.length>14? (t0.slice(0,14)+'…') : t0;
@@ -861,7 +896,7 @@
       }else{
         ctxB.save();
         ctxB.translate(x(i)-6, h-26);
-        ctxB.rotate(-0.55);
+        ctxB.rotate(-0.7853981633974483);
         ctxB.fillText(t, 0, 0);
         ctxB.restore();
       }
@@ -937,8 +972,10 @@
 
 
   function drawChartOn(canvas, labels, series){
-    const ctx2 = canvas.getContext('2d');
-    const w=canvas.width, h=canvas.height;
+    const f = fitCanvas(canvas, 160, 120);
+    const ctx2 = f.ctx;
+    const w = f.w, h = f.h;
+    if(!ctx2) return;
     // clear
     ctx2.clearRect(0,0,w,h);
     drawAxesBase(ctx2, w, h);
@@ -955,15 +992,29 @@
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
     // y ticks
-    drawYAxis(ctx2, left, top, bottom, ymin, ymax);
+    drawYAxis(ctx2, left, top, bottom, right, ymin, ymax);
 
-    // x labels sparse
+    // x labels (sparse, drop year on dates, rotate 45° when dates/dense)
     ctx2.fillStyle='rgba(154,164,178,0.9)';
     ctx2.font='11px system-ui';
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
     const step = Math.max(1, Math.floor(n/4));
+    const rotate = hasDate || n>8;
     for(let i=0;i<n;i+=step){
-      const t = cleanXLabel(labels[i]||'');
-      ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
+      const t0 = cleanXLabel(labels[i]||'');
+      const t = t0.length>12? (t0.slice(0,12)+'…') : t0;
+      if(!rotate){
+        ctx2.fillText(t, x(i)-12, h-24);
+      }else{
+        ctx2.save();
+        ctx2.translate(x(i)-6, h-26);
+        ctx2.rotate(-0.7853981633974483);
+        ctx2.fillText(t, 0, 0);
+        ctx2.restore();
+      }
     }
 
     for(const s of series){
@@ -1012,8 +1063,10 @@
   }
 
   function drawBarOn(canvas, labels, series){
-    const ctx2 = canvas.getContext('2d');
-    const w=canvas.width, h=canvas.height;
+    const f = fitCanvas(canvas, 160, 120);
+    const ctx2 = f.ctx;
+    const w = f.w, h = f.h;
+    if(!ctx2) return;
     ctx2.clearRect(0,0,w,h);
     drawAxesBase(ctx2, w, h);
     if(!labels || !labels.length) return;
@@ -1033,15 +1086,29 @@
     if(ymax===ymin) ymax = ymin + 1;
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
-    drawYAxis(ctx2, left, top, bottom, ymin, ymax);
+    drawYAxis(ctx2, left, top, bottom, right, ymin, ymax);
 
-    // x labels sparse
+    // x labels (sparse, drop year on dates, rotate 45° when dates/dense)
     ctx2.fillStyle='rgba(154,164,178,0.9)';
     ctx2.font='11px system-ui';
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
     const step = Math.max(1, Math.floor(n/4));
+    const rotate = hasDate || n>8;
     for(let i=0;i<n;i+=step){
-      const t = cleanXLabel(labels[i]||'');
-      ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
+      const t0 = cleanXLabel(labels[i]||'');
+      const t = t0.length>12? (t0.slice(0,12)+'…') : t0;
+      if(!rotate){
+        ctx2.fillText(t, x(i)-12, h-24);
+      }else{
+        ctx2.save();
+        ctx2.translate(x(i)-6, h-26);
+        ctx2.rotate(-0.7853981633974483);
+        ctx2.fillText(t, 0, 0);
+        ctx2.restore();
+      }
     }
 
     const k = Math.max(1, series.length);
@@ -1080,7 +1147,7 @@
   }
 
   function drawRadar(a, b, axes){
-    const w=$canvas.width, h=$canvas.height;
+    const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
     const R=Math.min(w,h)*0.38;
     ctx.clearRect(0,0,w,h);
@@ -1467,10 +1534,10 @@
       const Craw = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
       // Determine closest axis from tap position
       const rect = $canvas.getBoundingClientRect();
-      const sx = (clientX - rect.left) * ($canvas.width / rect.width);
-      const sy = (clientY - rect.top) * ($canvas.height / rect.height);
-      const cx = $canvas.width/2;
-      const cy = $canvas.height/2+12;
+      const sx = (clientX - rect.left);
+      const sy = (clientY - rect.top);
+      const cx = rect.width/2;
+      const cy = rect.height/2 + 12;
       const dx = sx - cx;
       const dy = sy - cy;
       const ang = Math.atan2(dy, dx);

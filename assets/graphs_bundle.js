@@ -889,6 +889,13 @@ root.appendChild(style);
     if($focusTitle && wrap.classList.contains('g-focus')) $focusTitle.textContent = (t || '');
   }
 
+  function hashHue(s){
+    s = String(s||'');
+    let h=0;
+    for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))>>>0;
+    return h % 360;
+  }
+
   function renderLegend(series){
     if(!$legend) return;
     if(!series || !series.length){ $legend.innerHTML=''; return; }

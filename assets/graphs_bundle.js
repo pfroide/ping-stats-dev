@@ -203,14 +203,12 @@
   const $phase = el('gPhase');
   const $compare = el('gCompare');
   const $view = el('gView');
-  const $uxMode = el('gUxMode');
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
   const $sheetBtn = el('gSheet');
   const $focusBar = el('gFocusBar');
   const $focusClose = el('gFocusClose');
   const $focusTitle = el('gFocusTitle');
-  const $toggleFilters = el('gToggleFilters');
   const $moreFilters = el('gMoreFilters');
   const $delta = el('gDelta');
   const $exportBtn = el('gExport');
@@ -380,10 +378,6 @@
     const prev = $metric.value;
     $metric.innerHTML = '';
     let opts = METRICS[mode] || METRICS.segments;
-    if($uxMode && $uxMode.value==='simple'){
-      const keep = SIMPLE_KEYS[mode] || SIMPLE_KEYS.segments;
-      opts = opts.filter(([k,_]) => keep.has(k));
-    }
     for (const [k,label] of opts){
       const o = document.createElement('option');
       o.value = k; o.textContent = label;
@@ -1526,56 +1520,6 @@
     window.__gTipT = window.setTimeout(hideTip, 3500);
   });
   $canvas.addEventListener('pointerleave', hideTip);
-
-  // Mobile UX: collapsible advanced filters
-  let _filtersOpen = false;
-  function syncFiltersPanel(){
-    if(!$moreFilters) return;
-    $moreFilters.classList.remove('is-open');
-    $moreFilters.style.display = 'grid';
-  }
-  }
-  if($toggleFilters){
-    $toggleFilters.addEventListener('click', ()=>{
-      _filtersOpen = !_filtersOpen;
-      syncFiltersPanel();
-    });
-  }
-  window.addEventListener('resize', syncFiltersPanel);
-  // initial
-  syncFiltersPanel();
-
-  // UX mode (simple/expert)
-  function applyUxMode(){
-    if(!$uxMode) return;
-    const simple = ($uxMode.value === 'simple');
-
-    // Force overlay in simple mode (mini-graphs are more complex visually)
-    if(simple && $view){
-      $view.value = 'overlay';
-      for(const o of $view.options){
-        if(o.value==='multiples') o.disabled = true;
-      }
-    }else if($view){
-      for(const o of $view.options){
-        if(o.value==='multiples') o.disabled = false;
-      }
-    }
-
-    // Hide advanced toggles in simple mode
-    if($delta && $delta.closest('.g-pill')) $delta.closest('.g-pill').style.display = simple ? 'none' : '';
-    if($club && $club.closest('.g-pill')) $club.closest('.g-pill').style.display = simple ? 'none' : '';
-    if($chartType) $chartType.style.display = simple ? 'none' : '';
-
-    // In simple mode on mobile: keep advanced filters collapsed by default
-    if(simple){ _filtersOpen = false; syncFiltersPanel(); }
-  }
-  if($uxMode){
-    const isMobile = window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
-    $uxMode.value = isMobile ? 'simple' : 'expert';
-    applyUxMode();
-    if($uxMode){ $uxMode.addEventListener('change', ()=>{ applyUxMode(); setMetricOptions(); render(); hideTip(); }); }
-  }
 
   // Focus mode (fullscreen)
   let _isFocus = false;

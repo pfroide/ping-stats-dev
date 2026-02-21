@@ -1430,7 +1430,7 @@ function drawRadar(a, b, axes, bgA, bgB){
       out.push({ label: p.name || lic, values: vals });
     }
     // club overlay (uses precomputed club segments; not filter-aware)
-    if($club.checked && CLUB && CLUB.segments){
+    if($club && $club.checked && CLUB && CLUB.segments){
       const segs = (CLUB.segments && CLUB.segments[scope]) || {};
       const entries = Object.entries(segs).map(([k,v])=>({k,v}));
       entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
@@ -1553,7 +1553,7 @@ async function render(){
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if($club){
     if(isLineMode && hasB){
-      $club.checked = false;
+      if($club) $club.checked = false;
       $club.disabled = true;
     }else{
       $club.disabled = false;

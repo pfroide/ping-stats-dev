@@ -91,10 +91,13 @@
   wrap.innerHTML = `
     <div class="g-grid" style="gap:10px; padding:10px;">
       <div class="g-row" id="gControlsRow">
-        <select id="gPlayer" class="g-select"><option value="">Joueur…</option></select>
-        <select id="gCompare" class="g-select">
-          <option value="">Comparer: aucun</option>
-        </select>
+        <select id="gPlayer" class="g-select"><option value="">Joueur A…</option></select>
+        <select id="gCompare" class="g-select"><option value="">Joueur B…</option></select>
+        <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
+        <button id="gSheet" class="g-btn" type="button">Fiche</button>
+      </div>
+
+      <div class="g-row" id="gModeRow">
         <select id="gMode" class="g-select">
           <option value="segments">Segments</option>
           <option value="timeline">Timeline</option>
@@ -105,54 +108,37 @@
           <option value="overlay">Vue: superposée</option>
           <option value="multiples">Vue: mini-graphs</option>
         </select>
-        <select id="gUxMode" class="g-select">
-          <option value="simple">Vue: simple</option>
-          <option value="expert">Vue: expert</option>
-        </select>
-        <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
-        <button id="gSheet" class="g-btn" type="button">Fiche</button>
-        <button id="gToggleFilters" class="g-btn" type="button">⚙ Filtres</button>
-        <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
-        <label class="g-pill" style="cursor:default">
-          <input id="gDelta" type="checkbox" />
-          <small>Δ A−B</small>
-        </label>
-        <button id="gExport" class="g-btn" type="button">Export PNG</button>
-
-        <label class="g-pill" style="cursor:default">
-          <input id="gClub" type="checkbox" />
-          <small>Club</small>
-        </label>
       </div>
 
-      <div class="g-row" id="gFocusBar" style="display:none; justify-content:space-between; align-items:center; gap:10px; padding:0 2px;">
-        <div id="gFocusTitle" style="font-weight:800; color:rgba(230,233,239,0.95); font-size:14px;">Graphiques</div>
-        <button id="gFocusClose" class="g-btn" type="button">✕ Quitter</button>
-      </div>
+      <div class="g-grid g-more" id="gMoreFilters" style="gap:10px;">
+        <div class="g-row" id="gRow3">
+          <select id="gMetric" class="g-select"></select>
+          <select id="gChartType" class="g-select">
+            <option value="auto">Type: auto</option>
+            <option value="line">Type: ligne</option>
+            <option value="bar">Type: barres</option>
+          </select>
+          <select id="gScope" class="g-select">
+            <option value="tous">Tous</option>
+            <option value="indiv">Indiv</option>
+            <option value="equipe">Équipe</option>
+          </select>
+          <select id="gPhase" class="g-select">
+            <option value="all">Toutes phases</option>
+            <option value="1">Phase 1</option>
+            <option value="2">Phase 2</option>
+          </select>
+          <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
+          <button id="gExport" class="g-btn" type="button">Export PNG</button>
+        </div>
 
-      <div class="g-row g-more" id="gMoreFilters">
-        <select id="gMetric" class="g-select"></select>
-        <select id="gChartType" class="g-select">
-          <option value="auto">Type: auto</option>
-          <option value="line">Type: ligne</option>
-          <option value="bar">Type: barres</option>
-        </select>
-        <select id="gScope" class="g-select">
-          <option value="tous">Tous</option>
-          <option value="indiv">Indiv</option>
-          <option value="equipe">Équipe</option>
-        </select>
-        <select id="gPhase" class="g-select">
-          <option value="all">Toutes phases</option>
-          <option value="1">Phase 1</option>
-          <option value="2">Phase 2</option>
-        </select>
-        <label class="g-pill" style="cursor:default"><input id="gCtxBetter" type="checkbox"/><small>vs mieux classés</small></label>
-        <label class="g-pill" style="cursor:default"><input id="gCtxWorse" type="checkbox"/><small>vs moins classés</small></label>
-        <label class="g-pill" style="cursor:default"><input id="gCtxClose" type="checkbox"/><small>matchs serrés</small></label>
+        <div class="g-row" id="gRow4">
+          <label class="g-pill" style="cursor:default"><input id="gCtxBetter" type="checkbox"/><small>vs mieux classés</small></label>
+          <label class="g-pill" style="cursor:default"><input id="gCtxWorse" type="checkbox"/><small>vs moins classés</small></label>
+          <label class="g-pill" style="cursor:default"><input id="gCtxClose" type="checkbox"/><small>matchs serrés</small></label>
+        </div>
       </div>
-
-      <div class="g-row" id="gTimelineScroll" style="display:none; align-items:center; gap:10px;">
+<div class="g-row" id="gTimelineScroll" style="display:none; align-items:center; gap:10px;">
         <div class="g-muted" style="min-width:72px;">Défilement</div>
         <input id="gScroll" type="range" min="0" max="0" value="0" style="flex:1;" />
       </div>
@@ -1160,7 +1146,7 @@
       out.push({ label: p.name || lic, values: vals });
     }
     // club overlay
-    if($club.checked){
+    if($club && $club.checked){
       const segs = (CLUB && CLUB.segments && CLUB.segments[scope]) || {};
       const entries = Object.entries(segs).map(([k,v])=>({k,v}));
       entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
@@ -1219,7 +1205,6 @@
     if(!MANIFEST){ return; }
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
-    const aLic = (selected && selected.length) ? selected[0] : '';
     const bLic = $compare && $compare.value ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
     if($club && $club.checked) await ensureClub();
@@ -1241,17 +1226,22 @@
     // view controls enabled only on line modes
     const isLineMode = (mode==='segments' || mode==='timeline' || mode==='expected');
     $view.disabled = !isLineMode;
-    $delta.disabled = !isLineMode;
+    if($delta) $delta.disabled = !isLineMode;
     $exportBtn.disabled = false;
 
     // Comparison rules: if compare selected, we enforce A vs B on line modes too
+    const aLic = selected[0] || '';
+    const bLic = ($compare.value || '');
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
+    if($club){
     if(isLineMode && hasB){
       $club.checked = false;
       $club.disabled = true;
     }else{
       $club.disabled = false;
     }
+  }
+
 
     if(mode==='radar'){
       if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
@@ -1262,7 +1252,7 @@
 
       let b = null;
       if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;
-      const club = ($club.checked && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
+      const club = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
 
       const aSeries = { label: PLAYERS[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
       let bSeries = null;
@@ -1325,13 +1315,13 @@
       bundle.series[1].color = COLOR_B;
     }
     // Club is always last when enabled
-    if($club.checked && bundle && bundle.series && bundle.series.length>=1){
+    if(($club && $club.checked) && bundle && bundle.series && bundle.series.length>=1){
       const last = bundle.series[bundle.series.length-1];
       if(last && (last.label==='Club')) last.color = COLOR_CLUB;
     }
 
     // optional delta series (A - B) when comparing
-    if(hasB && $delta.checked && bundle.series.length>=2){
+    if(hasB && $delta && $delta.checked && bundle.series.length>=2){
       const aVals = bundle.series[0].values;
       const bVals = bundle.series[1].values;
       const n = Math.max(aVals.length, bVals.length);
@@ -1402,7 +1392,7 @@
           b2.series[0].color = (lic===aLic) ? COLOR_A : COLOR_B;
         }
         // add club overlay if enabled and allowed
-        if($club.checked && !$club.disabled){
+        if(($club && $club.checked) && !$club.disabled){
           if(mode==='segments'){
             const c = seriesSegments(metric, scope, phase, []); // uses selected default but includes club overlay; we want only club values aligned.
             // rebuild club series directly from DATA
@@ -1460,7 +1450,7 @@
       const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
       const Araw = (((PLAYERS[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
       const Braw = bLic ? ((((PLAYERS[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
-      const Craw = ($club.checked && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
+      const Craw = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
       // Determine closest axis from tap position
       const rect = $canvas.getBoundingClientRect();
       const sx = (clientX - rect.left) * ($canvas.width / rect.width);
@@ -1543,16 +1533,9 @@
   let _filtersOpen = false;
   function syncFiltersPanel(){
     if(!$moreFilters) return;
-    const isMobile = window.matchMedia('(max-width: 560px)').matches;
-    if(isMobile){
-      // Important: remove inline display set by desktop to let CSS/media-query drive visibility.
-      $moreFilters.style.display = '';
-      $moreFilters.classList.toggle('is-open', _filtersOpen);
-    }else{
-      // Always visible on desktop
-      $moreFilters.classList.remove('is-open');
-      $moreFilters.style.display = 'flex';
-    }
+    $moreFilters.classList.remove('is-open');
+    $moreFilters.style.display = 'grid';
+  }
   }
   if($toggleFilters){
     $toggleFilters.addEventListener('click', ()=>{
@@ -1593,7 +1576,7 @@
     const isMobile = window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
     $uxMode.value = isMobile ? 'simple' : 'expert';
     applyUxMode();
-    $uxMode.addEventListener('change', ()=>{ applyUxMode(); setMetricOptions(); render(); hideTip(); });
+    if($uxMode){ $uxMode.addEventListener('change', ()=>{ applyUxMode(); setMetricOptions(); render(); hideTip(); }); }
   }
 
   // Focus mode (fullscreen)
@@ -1623,7 +1606,7 @@
   $scope.addEventListener('change', render);
   $phase.addEventListener('change', render);
   $view.addEventListener('change', render);
-  $delta.addEventListener('change', render);
+  if($delta) $delta.addEventListener('change', render);
   $compare.addEventListener('change', ()=>{
     // keep A as first selected; if none, auto select first player in data
     if($compare.value && selected.length===0){
@@ -1632,7 +1615,7 @@
     }
     render();
   });
-  $club.addEventListener('change', render);
+  if($club) $club.addEventListener('change', render);
 
   // Context filters
   function ctxChanged(){

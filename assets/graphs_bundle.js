@@ -131,7 +131,7 @@
       .g-sheet .sh-photo{ width:84px; height:112px; }
     }
   `;
-  
+
 root.appendChild(style);
 
   // Player photos (offline): images_joueurs/<licence>.(webp|jpg|jpeg|png)
@@ -1593,7 +1593,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   // Heatmap removed.
 
-  
+
   function updateFocusHeader(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }

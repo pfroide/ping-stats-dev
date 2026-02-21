@@ -16,6 +16,9 @@
     .g-card{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color: #e6e9ef; }
     .g-muted{ color:#9aa4b2; }
     .g-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .g-row > *{ min-width:0; }
+    .g-select{ flex: 1 1 220px; max-width:100%; }
+    .g-btn{ flex: 0 0 auto; white-space:nowrap; }
     .g-input,.g-select{ padding:10px 12px; border-radius:12px; border:1px solid #263043; background:rgba(255,255,255,0.04); color:#e6e9ef; outline:none; }
     .g-btn{ padding:10px 12px; border-radius:12px; border:1px solid #263043; background:rgba(255,255,255,0.06); color:#e6e9ef; cursor:pointer; font-weight:700; }
     .g-pill{ display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); cursor:pointer; }
@@ -42,8 +45,8 @@
     .g-pop .box h3{ margin:0 0 6px; font-size:14px; }
     .g-pop .box p{ margin:0 0 10px; color:#9aa4b2; font-size:13px; }
     .g-pop .box a{ color:#cfe1ff; text-decoration:underline; font-size:13px; }
-    .g-more{ display:flex; }
-    .g-more.is-collapsed{ display:none; }
+    .g-more{ display:grid; }
+    .g-more.is-collapsed{ display:none; } /* legacy */
     .g-grid{ display:grid; gap:6px; }
     .g-heat{ border:1px solid #263043; border-radius:14px; overflow:auto; width:100%; }
     table{ border-collapse:collapse; font-size:13px; }
@@ -70,10 +73,19 @@
       .g-input,.g-select,.g-btn{ padding:12px 12px; font-size:14px; }
       .g-title{ font-size:15px; }
       .g-tip{ font:13px system-ui; padding:12px 12px; }
-      /* default: keep advanced filters collapsed */
-      .g-more{ display:none; }
-      .g-more.is-open{ display:flex; }
+      /* mobile: keep filters visible (wrapping) */
+      .g-more{ display:grid; }
+      .g-more.is-open{ display:grid; }
       .g-tiles{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    }
+
+
+    @media (max-width: 560px){
+      #gControlsRow .g-select{ flex:1 1 100%; }
+      #gModeRow .g-select{ flex:1 1 48%; }
+      #gModeRow .g-btn{ flex:1 1 48%; }
+      #gRow3 .g-select{ flex:1 1 48%; }
+      #gRow3 .g-btn{ flex:1 1 48%; }
     }
 
     /* Focus mode (mobile-first fullscreen) */
@@ -93,8 +105,6 @@
       <div class="g-row" id="gControlsRow">
         <select id="gPlayer" class="g-select"><option value="">Joueur A…</option></select>
         <select id="gCompare" class="g-select"><option value="">Joueur B…</option></select>
-        <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
-        <button id="gSheet" class="g-btn" type="button">Fiche</button>
       </div>
 
       <div class="g-row" id="gModeRow">
@@ -108,6 +118,8 @@
           <option value="overlay">Vue: superposée</option>
           <option value="multiples">Vue: mini-graphs</option>
         </select>
+        <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
+        <button id="gSheet" class="g-btn" type="button">Fiche</button>
       </div>
 
       <div class="g-grid g-more" id="gMoreFilters" style="gap:10px;">
@@ -365,6 +377,10 @@
     radar: [ ['radar','Kiviat'] ],
   };
 
+  const INT_METRICS = new Set(['matches','wins','losses','perfs','contres','perfs_cum','contres_cum']);
+  let _FMT_FORCE_INT = false;
+
+
   const SIMPLE_KEYS = {
     // Keep it truly "simple": 4 metrics max.
     segments: new Set(['pointres_total','win_rate','perfs','contres']),
@@ -591,6 +607,7 @@
 
   function fmtNum(v){
     if(v==null || !isFinite(v)) return '';
+    if(_FMT_FORCE_INT) return String(Math.round(v));
     const av = Math.abs(v);
     if(av >= 100) return String(Math.round(v));
     if(av >= 10) return v.toFixed(1);
@@ -818,7 +835,13 @@
     if(ymax===ymin){ ymax=ymin+1; }
 
     const left=46, top=12, bottom=h-38, right=w-12;
-    const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
+    const k = Math.max(1, series.length);
+    const groupW = Math.max(10, Math.min(54, (right-left)/(n*1.25)));
+    const span = Math.max(0, (right-left) - groupW);
+    const x = (i)=> {
+      if(n<=1) return (left+right)/2;
+      return left + (groupW/2) + span*(i/(n-1));
+    };
     const y = (v)=> bottom - (bottom-top)*((v-ymin)/(ymax-ymin));
 
     drawAxesBase(ctxB,w,h);
@@ -844,8 +867,6 @@
       }
     }
 
-    const k = Math.max(1, series.length);
-    const groupW = Math.max(10, Math.min(54, (right-left)/(n*1.25)));
     const barW = Math.max(6, Math.floor((groupW-6)/k));
     const baseY = y(0);
 
@@ -1284,6 +1305,7 @@
 
     // line modes: segments/timeline/expected
     const metric = $metric.value;
+    _FMT_FORCE_INT = INT_METRICS.has(metric);
     try{ CURRENT_METRIC_LABEL = ($metric.options[$metric.selectedIndex] && $metric.options[$metric.selectedIndex].textContent) ? $metric.options[$metric.selectedIndex].textContent : metric; }catch(e){ CURRENT_METRIC_LABEL = metric; }
     const scope = $scope.value;
     const phase = $phase.value;
@@ -1525,23 +1547,20 @@
   let _isFocus = false;
   function setFocus(on){
     _isFocus = !!on;
-    if(_isFocus){
-      wrap.classList.add('g-focus');
-      if($controlsRow) $controlsRow.style.display='none';
-      if($focusBar) $focusBar.style.display='flex';
-      if($focusTitle) $focusTitle.textContent = $title ? $title.textContent : 'Graphiques';
-      document.documentElement.style.overflow='hidden';
-      document.body.style.overflow='hidden';
-    }else{
-      wrap.classList.remove('g-focus');
-      if($controlsRow) $controlsRow.style.display='flex';
-      if($focusBar) $focusBar.style.display='none';
-      document.documentElement.style.overflow='';
-      document.body.style.overflow='';
+    wrap.classList.toggle('g-focus', _isFocus);
+    if($focus){
+      $focus.textContent = _isFocus ? '← Retour' : '⤢ Focus';
+      $focus.setAttribute('aria-pressed', _isFocus ? 'true' : 'false');
     }
+    // Keep controls visible in focus mode (no more dead-end). We only hide advanced filters via CSS.
+    if($focusBar) $focusBar.style.display = _isFocus ? 'flex' : 'none';
+    if($focusTitle) $focusTitle.textContent = $title ? $title.textContent : 'Graphiques';
+    document.documentElement.style.overflow = _isFocus ? 'hidden' : '';
+    document.body.style.overflow = _isFocus ? 'hidden' : '';
   }
   if($focus) $focus.addEventListener('click', ()=> setFocus(!_isFocus));
   if($focusClose) $focusClose.addEventListener('click', ()=> setFocus(false));
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus) setFocus(false); });
 
   $metric.addEventListener('change', ()=>{ render(); hideTip(); });
   $chartType.addEventListener('change', ()=>{ render(); hideTip(); });

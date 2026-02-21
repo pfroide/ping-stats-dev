@@ -54,8 +54,8 @@
     th{ position:sticky; top:0; background:rgba(18,24,38,0.98); color:#9aa4b2; text-align:left; }
 
     /* Player sheet */
-    .g-sheet{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:flex-end; justify-content:center; z-index:12000; }
-    .g-sheet .box{ width:min(820px, 96vw); max-height:92vh; overflow:auto; border:1px solid #263043; border-radius:16px 16px 0 0; background:#0b1220; padding:12px; }
+    .g-sheet{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:12000; }
+    .g-sheet .box{ width:min(1120px, 98vw); max-height:92vh; overflow:auto; border:1px solid #263043; border-radius:16px; background:#0b1220; padding:16px; margin:0 auto; }
     .g-sheet .hdr{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
     .g-sheet .hdr .nm{ font-weight:900; font-size:15px; }
     .g-tiles{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-top:10px; }
@@ -77,6 +77,8 @@
       .g-more{ display:grid; }
       .g-more.is-open{ display:grid; }
       .g-tiles{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .g-sheet{ align-items:flex-end; }
+      .g-sheet .box{ width:100vw; border-radius:16px 16px 0 0; padding:12px; }
     }
 
 
@@ -95,6 +97,12 @@
     .g-card.g-focus .g-title{ margin-top:8px; }
     .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:62vh; }
     .g-card.g-focus .g-legend{ max-width:none; }
+.g-card.g-focus .g-grid{ max-width:1200px; margin:0 auto; }
+.g-card.g-focus .g-title,
+.g-card.g-focus .g-canvas,
+.g-card.g-focus .g-legend,
+.g-card.g-focus #gMulti,
+.g-card.g-focus #gCompareCards{ max-width:1200px; margin-left:auto; margin-right:auto; }
 .g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
     .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
@@ -292,7 +300,7 @@ root.appendChild(style);
         <div class="g-tiles" id="gSheetTiles"></div>
         <div class="sec">
           <h4>Graphe principal</h4>
-          <canvas id="gSheetCanvas" class="g-canvas" width="980" height="420" style="height:340px"></canvas>
+          <canvas id="gSheetCanvas" class="g-canvas" width="980" height="420" style="height:420px"></canvas>
         </div>
         <div class="sec" id="gSheetMatches" style="display:none;">
           <h4>Match par match</h4>

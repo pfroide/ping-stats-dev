@@ -1219,6 +1219,7 @@
     if(!MANIFEST){ return; }
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
+    const aLic = (selected && selected.length) ? selected[0] : '';
     const bLic = $compare && $compare.value ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
     if($club && $club.checked) await ensureClub();
@@ -1244,8 +1245,6 @@
     $exportBtn.disabled = false;
 
     // Comparison rules: if compare selected, we enforce A vs B on line modes too
-    const aLic = selected[0] || '';
-    const bLic = ($compare.value || '');
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if(isLineMode && hasB){
       $club.checked = false;

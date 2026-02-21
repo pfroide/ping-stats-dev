@@ -1267,7 +1267,105 @@ root.appendChild(style);
     }
   }
 
-function drawRadar(a, b, axes, bgA, bgB){
+  function drawBarOn(canvas, labels, series){
+    const f = fitCanvas(canvas, 160, 120);
+    const ctx2 = f.ctx;
+    const w = f.w, h = f.h;
+    if(!ctx2) return;
+    ctx2.clearRect(0,0,w,h);
+    drawAxesBase(ctx2, w, h);
+    if(!labels || !labels.length) return;
+
+    const left=54, top=26, right=w-12, bottom=h-54;
+    const n=labels.length;
+
+    // y range include 0
+    let ymin=0, ymax=0;
+    for(const s of series){
+      for(const v of s.values){
+        if(v==null || !isFinite(v)) continue;
+        ymin = Math.min(ymin, v);
+        ymax = Math.max(ymax, v);
+      }
+    }
+    if(ymax===ymin) ymax = ymin + 1;
+    const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
+    const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
+    drawYAxis(ctx2, left, top, bottom, right, ymin, ymax);
+
+    // x labels (sparse, drop year on dates, rotate 45° when dates/dense)
+    ctx2.fillStyle='rgba(154,164,178,0.9)';
+    ctx2.font='11px system-ui';
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
+    const step = Math.max(1, Math.floor(n/4));
+    const rotate = hasDate || n>8;
+    for(let i=0;i<n;i+=step){
+      const t0 = cleanXLabel(labels[i]||'');
+      const t = t0.length>12? (t0.slice(0,12)+'…') : t0;
+      if(!rotate){
+        ctx2.fillText(t, x(i)-12, h-24);
+      }else{
+        ctx2.save();
+        ctx2.translate(x(i)-6, h-26);
+        ctx2.rotate(-0.7853981633974483);
+        ctx2.fillText(t, 0, 0);
+        ctx2.restore();
+      }
+    }
+
+    const k = Math.max(1, series.length);
+    const groupW = Math.max(10, Math.min(44, (right-left)/(n*1.25)));
+    const barW = Math.max(6, Math.floor((groupW-6)/k));
+    const baseY = y(0);
+
+    for(let i=0;i<n;i++){
+      const gx = x(i) - (groupW/2);
+      for(let j=0;j<series.length;j++){
+        const s=series[j];
+        const v=s.values[i];
+        if(v==null || !isFinite(v)) continue;
+        const hue = hashHue(s.label);
+        const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.78)`;
+        ctx2.fillStyle = col;
+        const bx = gx + 3 + j*barW;
+        const yv = y(v);
+        const bh = Math.abs(baseY - yv);
+        const by = v>=0 ? yv : baseY;
+        ctx2.fillRect(bx, by, barW-2, Math.max(1,bh));
+        // value label (few only to avoid clutter)
+        if(n<=10 || i===0 || i===n-1){
+          ctx2.fillStyle = col;
+          ctx2.font='600 11px system-ui';
+          ctx2.fillText(fmtNum(v), bx, (v>=0? by-4 : by+bh+12));
+        }
+      }
+    }
+  }
+
+
+
+function drawCoverBias(c, img, x, y, w, h, biasY){
+    if(!img) return;
+    const iw = img.width || 1, ih = img.height || 1;
+    const ir = iw / ih, tr = w / h;
+    const by = (biasY==null || !isFinite(biasY)) ? 0.5 : Math.max(0, Math.min(1, biasY));
+    let sx=0, sy=0, sw=iw, sh=ih;
+    if(ir > tr){
+      sh = ih;
+      sw = Math.max(1, Math.floor(sh * tr));
+      sx = Math.floor((iw - sw) / 2);
+    }else{
+      sw = iw;
+      sh = Math.max(1, Math.floor(sw / tr));
+      sy = Math.floor((ih - sh) * by);
+    }
+    c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+
+  function drawRadar(a, b, axes, bgA, bgB){
     const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
     const R=Math.min(w,h)*0.38;
@@ -1437,7 +1535,7 @@ function drawRadar(a, b, axes, bgA, bgB){
       out.push({ label: p.name || lic, values: vals });
     }
     // club overlay (uses precomputed club segments; not filter-aware)
-    if($club && $club.checked && CLUB && CLUB.segments){
+    if($club && ($club && ($club && $club.checked)) && CLUB && CLUB.segments){
       const segs = (CLUB.segments && CLUB.segments[scope]) || {};
       const entries = Object.entries(segs).map(([k,v])=>({k,v}));
       entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
@@ -1532,6 +1630,7 @@ async function render(){
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
     const aLic = selected[0] || '';
+    if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
     const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
     updateFocusHeader(aLic, bLic);
@@ -1577,9 +1676,9 @@ async function render(){
 
       let b = null;
       if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;
-      const club = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
+      const club = (($club && ($club && ($club && $club.checked))) && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
 
-      const aSeries = { label: PLAYERS[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
+      const aSeries = { label: ((PLAYERS[aLic] && (PLAYERS[aLic].name||aLic)) || aLic), values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
       let bSeries = null;
       if(b){
         bSeries = { label: PLAYERS[bLic].name || bLic, values: axes.map(ax => (b && b[ax.key]) ?? 0), color: COLOR_B };
@@ -1649,7 +1748,7 @@ async function render(){
       bundle.series[1].color = COLOR_B;
     }
     // Club is always last when enabled
-    if(($club && $club.checked) && bundle && bundle.series && bundle.series.length>=1){
+    if(($club && ($club && ($club && $club.checked))) && bundle && bundle.series && bundle.series.length>=1){
       const last = bundle.series[bundle.series.length-1];
       if(last && (last.label==='Club')) last.color = COLOR_CLUB;
     }
@@ -1726,7 +1825,7 @@ async function render(){
           b2.series[0].color = (lic===aLic) ? COLOR_A : COLOR_B;
         }
         // add club overlay if enabled and allowed
-        if(($club && $club.checked) && !$club.disabled){
+        if(($club && ($club && ($club && $club.checked))) && !$club.disabled){
           if(mode==='segments'){
             const c = seriesSegments(metric, scope, phase, []); // uses selected default but includes club overlay; we want only club values aligned.
             // rebuild club series directly from DATA
@@ -1784,7 +1883,7 @@ async function render(){
       const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
       const Araw = (((PLAYERS[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
       const Braw = bLic ? ((((PLAYERS[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
-      const Craw = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
+      const Craw = (($club && ($club && ($club && $club.checked))) && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
       // Determine closest axis from tap position
       const rect = $canvas.getBoundingClientRect();
       const sx = (clientX - rect.left);
@@ -1964,6 +2063,7 @@ async function render(){
       const pad = 12;
 
       const aLic = selected[0] || '';
+    if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
       const bLic = ($compare && $compare.value) ? $compare.value : '';
       const aP = await getPhoto(aLic);
       const bP = await getPhoto(bLic);

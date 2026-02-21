@@ -16,6 +16,9 @@
     .g-card{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color: #e6e9ef; }
     .g-muted{ color:#9aa4b2; }
     .g-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .g-row > *{ min-width:0; }
+    .g-select{ flex: 1 1 220px; max-width:100%; }
+    .g-btn{ flex: 0 0 auto; white-space:nowrap; }
     .g-input,.g-select{ padding:10px 12px; border-radius:12px; border:1px solid #263043; background:rgba(255,255,255,0.04); color:#e6e9ef; outline:none; }
     .g-btn{ padding:10px 12px; border-radius:12px; border:1px solid #263043; background:rgba(255,255,255,0.06); color:#e6e9ef; cursor:pointer; font-weight:700; }
     .g-pill{ display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); cursor:pointer; }
@@ -42,8 +45,8 @@
     .g-pop .box h3{ margin:0 0 6px; font-size:14px; }
     .g-pop .box p{ margin:0 0 10px; color:#9aa4b2; font-size:13px; }
     .g-pop .box a{ color:#cfe1ff; text-decoration:underline; font-size:13px; }
-    .g-more{ display:flex; }
-    .g-more.is-collapsed{ display:none; }
+    .g-more{ display:grid; }
+    .g-more.is-collapsed{ display:none; } /* legacy */
     .g-grid{ display:grid; gap:6px; }
     .g-heat{ border:1px solid #263043; border-radius:14px; overflow:auto; width:100%; }
     table{ border-collapse:collapse; font-size:13px; }
@@ -51,12 +54,9 @@
     th{ position:sticky; top:0; background:rgba(18,24,38,0.98); color:#9aa4b2; text-align:left; }
 
     /* Player sheet */
-    .g-sheet{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:flex-end; justify-content:center; z-index:12000; }
-    .g-sheet .box{ width:min(820px, 96vw); max-height:92vh; overflow:auto; border:1px solid #263043; border-radius:16px 16px 0 0; background:#0b1220; padding:12px; }
+    .g-sheet{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:12000; }
+    .g-sheet .box{ width:min(1120px, 98vw); max-height:92vh; overflow:auto; border:1px solid #263043; border-radius:16px; background:#0b1220; padding:16px; margin:0 auto; }
     .g-sheet .hdr{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
-    .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
-    .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
-    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     .g-sheet .hdr .nm{ font-weight:900; font-size:15px; }
     .g-tiles{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-top:10px; }
     .g-tile{ border:1px solid #263043; border-radius:14px; background:rgba(255,255,255,0.04); padding:10px 12px; }
@@ -73,10 +73,21 @@
       .g-input,.g-select,.g-btn{ padding:12px 12px; font-size:14px; }
       .g-title{ font-size:15px; }
       .g-tip{ font:13px system-ui; padding:12px 12px; }
-      /* default: keep advanced filters collapsed */
-      .g-more{ display:none; }
-      .g-more.is-open{ display:flex; }
+      /* mobile: keep filters visible (wrapping) */
+      .g-more{ display:grid; }
+      .g-more.is-open{ display:grid; }
       .g-tiles{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .g-sheet{ align-items:flex-end; }
+      .g-sheet .box{ width:100vw; border-radius:16px 16px 0 0; padding:12px; }
+    }
+
+
+    @media (max-width: 560px){
+      #gControlsRow .g-select{ flex:1 1 100%; }
+      #gModeRow .g-select{ flex:1 1 48%; }
+      #gModeRow .g-btn{ flex:1 1 48%; }
+      #gRow3 .g-select{ flex:1 1 48%; }
+      #gRow3 .g-btn{ flex:1 1 48%; }
     }
 
     /* Focus mode (mobile-first fullscreen) */
@@ -86,18 +97,110 @@
     .g-card.g-focus .g-title{ margin-top:8px; }
     .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:62vh; }
     .g-card.g-focus .g-legend{ max-width:none; }
+.g-card.g-focus .g-grid{ max-width:1200px; margin:0 auto; }
+.g-card.g-focus .g-title,
+.g-card.g-focus .g-canvas,
+.g-card.g-focus .g-legend,
+.g-card.g-focus #gMulti,
+.g-card.g-focus #gCompareCards{ max-width:1200px; margin-left:auto; margin-right:auto; }
+.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
+    .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
+    .g-focusbg.g-a{ left:0; }
+    .g-focusbg.g-b{ right:0; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
+    .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
+    .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
+    .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
+    .g-fmeta{ min-width:0; }
+    .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
+    .g-vs{ font-weight:900; letter-spacing:1px; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.30); border:1px solid rgba(255,255,255,0.08); }
+    .g-x{ position:absolute; top:10px; right:10px; width:36px; height:36px; border-radius:12px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.08); color:#e9eef8; cursor:pointer; }
+    .g-x:hover{ background:rgba(0,0,0,0.44); }
+
+    .g-sheet .hdr{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
+    .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
+    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
+    @media (max-width: 520px){
+      .g-focushdr-content{ flex-direction:column; gap:10px; padding:12px; }
+      .g-fplayer{ min-width:0; width:100%; max-width:none; }
+      .g-vs{ margin: -2px 0; }
+      .g-avatar{ width:64px; height:64px; }
+      .g-sheet .sh-photo{ width:84px; height:112px; }
+    }
   `;
-  root.appendChild(style);
+  
+root.appendChild(style);
+
+  // Player photos (offline): images_joueurs/<licence>.(webp|jpg|jpeg|png)
+  const PHOTO_DIR = 'images_joueurs/';
+  const PHOTO_EXTS = ['webp','jpg','jpeg','png'];
+  const _PHOTO_CACHE = Object.create(null);
+
+  function photoCandidates(lic){
+    if(!lic) return [];
+    return PHOTO_EXTS.map(ext => PHOTO_DIR + lic + '.' + ext);
+  }
+
+  function setImgWithFallback(imgEl, lic){
+    if(!imgEl) return;
+    const cands = photoCandidates(lic);
+    let i = 0;
+    imgEl.referrerPolicy = 'no-referrer';
+    imgEl.loading = 'lazy';
+    imgEl.decoding = 'async';
+    imgEl.onerror = ()=>{
+      i++;
+      if(i < cands.length){
+        imgEl.src = cands[i];
+      }else{
+        imgEl.removeAttribute('src');
+      }
+    };
+    if(cands.length){
+      imgEl.src = cands[0];
+    }else{
+      imgEl.removeAttribute('src');
+    }
+  }
+
+  function loadImg(url){
+    return new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.referrerPolicy = 'no-referrer';
+      im.onload = ()=> resolve(im);
+      im.onerror = ()=> reject(new Error('img'));
+      im.src = url;
+    });
+  }
+
+  async function getPhoto(lic){
+    if(!lic) return null;
+    if(_PHOTO_CACHE[lic] !== undefined) return _PHOTO_CACHE[lic];
+    _PHOTO_CACHE[lic] = (async ()=>{
+      for(const url of photoCandidates(lic)){
+        try{
+          const img = await loadImg(url);
+          return {url, img};
+        }catch(e){}
+      }
+      return null;
+    })();
+    return _PHOTO_CACHE[lic];
+  }
 
   const wrap = document.createElement('div');
   wrap.className = 'g-card';
   wrap.innerHTML = `
     <div class="g-grid" style="gap:10px; padding:10px;">
       <div class="g-row" id="gControlsRow">
-        <select id="gPlayer" class="g-select"><option value="">Joueur…</option></select>
-        <select id="gCompare" class="g-select">
-          <option value="">Comparer: aucun</option>
-        </select>
+        <select id="gPlayer" class="g-select"><option value="">Joueur A…</option></select>
+        <select id="gCompare" class="g-select"><option value="">Joueur B…</option></select>
+      </div>
+
+      <div class="g-row" id="gModeRow">
         <select id="gMode" class="g-select">
           <option value="segments">Segments</option>
           <option value="timeline">Timeline</option>
@@ -108,54 +211,62 @@
           <option value="overlay">Vue: superposée</option>
           <option value="multiples">Vue: mini-graphs</option>
         </select>
-        <select id="gUxMode" class="g-select">
-          <option value="simple">Vue: simple</option>
-          <option value="expert">Vue: expert</option>
-        </select>
         <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
         <button id="gSheet" class="g-btn" type="button">Fiche</button>
-        <button id="gToggleFilters" class="g-btn" type="button">⚙ Filtres</button>
-        <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
-        <label class="g-pill" style="cursor:default">
-          <input id="gDelta" type="checkbox" />
-          <small>Δ A−B</small>
-        </label>
-        <button id="gExport" class="g-btn" type="button">Export PNG</button>
-
-        <label class="g-pill" style="cursor:default">
-          <input id="gClub" type="checkbox" />
-          <small>Club</small>
-        </label>
       </div>
 
-      <div class="g-row" id="gFocusBar" style="display:none; justify-content:space-between; align-items:center; gap:10px; padding:0 2px;">
-        <div id="gFocusTitle" style="font-weight:800; color:rgba(230,233,239,0.95); font-size:14px;">Graphiques</div>
-        <button id="gFocusClose" class="g-btn" type="button">✕ Quitter</button>
+      <div class="g-focushdr" id="gFocusHdr" style="display:none">
+        <div class="g-focusbg g-a"><img id="gFocusBgA" alt=""/></div>
+        <div class="g-focusbg g-b"><img id="gFocusBgB" alt=""/></div>
+        <div class="g-focushdr-content">
+          <div class="g-fplayer" id="gFocusCardA">
+            <div class="g-avatar"><img id="gFocusAvatarA" alt=""/></div>
+            <div class="g-fmeta">
+              <div class="g-fname" id="gFocusNameA">—</div>
+              <div class="g-fsub" id="gFocusSubA"></div>
+            </div>
+          </div>
+          <div class="g-vs" id="gFocusVS">VS</div>
+          <div class="g-fplayer" id="gFocusCardB">
+            <div class="g-avatar"><img id="gFocusAvatarB" alt=""/></div>
+            <div class="g-fmeta">
+              <div class="g-fname" id="gFocusNameB">—</div>
+              <div class="g-fsub" id="gFocusSubB"></div>
+            </div>
+          </div>
+          <button id="gFocusClose" class="g-x" type="button" aria-label="Fermer">✕</button>
+        </div>
       </div>
 
-      <div class="g-row g-more" id="gMoreFilters">
-        <select id="gMetric" class="g-select"></select>
-        <select id="gChartType" class="g-select">
-          <option value="auto">Type: auto</option>
-          <option value="line">Type: ligne</option>
-          <option value="bar">Type: barres</option>
-        </select>
-        <select id="gScope" class="g-select">
-          <option value="tous">Tous</option>
-          <option value="indiv">Indiv</option>
-          <option value="equipe">Équipe</option>
-        </select>
-        <select id="gPhase" class="g-select">
-          <option value="all">Toutes phases</option>
-          <option value="1">Phase 1</option>
-          <option value="2">Phase 2</option>
-        </select>
-        <label class="g-pill" style="cursor:default"><input id="gCtxBetter" type="checkbox"/><small>vs mieux classés</small></label>
-        <label class="g-pill" style="cursor:default"><input id="gCtxWorse" type="checkbox"/><small>vs moins classés</small></label>
-        <label class="g-pill" style="cursor:default"><input id="gCtxClose" type="checkbox"/><small>matchs serrés</small></label>
-      </div>
+      <div class="g-grid g-more" id="gMoreFilters" style="gap:10px;">
+        <div class="g-row" id="gRow3">
+          <select id="gMetric" class="g-select"></select>
+          <select id="gChartType" class="g-select">
+            <option value="auto">Type: auto</option>
+            <option value="line">Type: ligne</option>
+            <option value="bar">Type: barres</option>
+          </select>
+          <select id="gScope" class="g-select">
+            <option value="tous">Tous</option>
+            <option value="indiv">Indiv</option>
+            <option value="equipe">Équipe</option>
+          </select>
+          <select id="gPhase" class="g-select">
+            <option value="all">Toutes phases</option>
+            <option value="1">Phase 1</option>
+            <option value="2">Phase 2</option>
+          </select>
+          <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
+          <button id="gExport" class="g-btn" type="button">Export PNG</button>
+        </div>
 
-      <div class="g-row" id="gTimelineScroll" style="display:none; align-items:center; gap:10px;">
+        <div class="g-row" id="gRow4">
+          <label class="g-pill" style="cursor:default"><input id="gCtxBetter" type="checkbox"/><small>vs mieux classés</small></label>
+          <label class="g-pill" style="cursor:default"><input id="gCtxWorse" type="checkbox"/><small>vs moins classés</small></label>
+          <label class="g-pill" style="cursor:default"><input id="gCtxClose" type="checkbox"/><small>matchs serrés</small></label>
+        </div>
+      </div>
+<div class="g-row" id="gTimelineScroll" style="display:none; align-items:center; gap:10px;">
         <div class="g-muted" style="min-width:72px;">Défilement</div>
         <input id="gScroll" type="range" min="0" max="0" value="0" style="flex:1;" />
       </div>
@@ -200,54 +311,6 @@
   `;
   root.appendChild(wrap);
 
-  // Player photos (offline): images_joueurs/<licence>.(webp|jpg|jpeg|png)
-  const PHOTO_DIR = 'images_joueurs/';
-  const PHOTO_EXTS = ['webp','jpg','jpeg','png'];
-  const _PHOTO_CACHE = Object.create(null);
-
-  function photoCandidates(lic){
-    if(!lic) return [];
-    return PHOTO_EXTS.map(ext => PHOTO_DIR + lic + '.' + ext);
-  }
-
-  function setImgWithFallback(imgEl, lic){
-    if(!imgEl) return;
-    const cands = photoCandidates(lic);
-    let i = 0;
-    imgEl.referrerPolicy = 'no-referrer';
-    imgEl.loading = 'lazy';
-    imgEl.decoding = 'async';
-    imgEl.onerror = ()=>{
-      i++;
-      if(i < cands.length) imgEl.src = cands[i];
-      else imgEl.removeAttribute('src');
-    };
-    if(cands.length) imgEl.src = cands[0];
-    else imgEl.removeAttribute('src');
-  }
-
-  function loadImg(url){
-    return new Promise((resolve, reject)=>{
-      const im = new Image();
-      im.referrerPolicy = 'no-referrer';
-      im.onload = ()=> resolve(im);
-      im.onerror = ()=> reject(new Error('img'));
-      im.src = url;
-    });
-  }
-
-  async function getPhotoImg(lic){
-    if(!lic) return null;
-    if(_PHOTO_CACHE[lic] !== undefined) return _PHOTO_CACHE[lic];
-    _PHOTO_CACHE[lic] = (async ()=>{
-      for(const url of photoCandidates(lic)){
-        try{ return await loadImg(url); }catch(e){}
-      }
-      return null;
-    })();
-    return _PHOTO_CACHE[lic];
-  }
-
   // KPI help popup (2 lines + link)
   const $pop = document.createElement('div');
   $pop.className = 'g-pop';
@@ -271,14 +334,12 @@
   const $phase = el('gPhase');
   const $compare = el('gCompare');
   const $view = el('gView');
-  const $uxMode = el('gUxMode');
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
   const $sheetBtn = el('gSheet');
   const $focusBar = el('gFocusBar');
   const $focusClose = el('gFocusClose');
   const $focusTitle = el('gFocusTitle');
-  const $toggleFilters = el('gToggleFilters');
   const $moreFilters = el('gMoreFilters');
   const $delta = el('gDelta');
   const $exportBtn = el('gExport');
@@ -294,6 +355,16 @@
   const $sheetName = el('gSheetName');
   const $sheetSub = el('gSheetSub');
   const $sheetPhoto = el('gSheetPhoto');
+  const $focusHdr = el('gFocusHdr');
+  const $focusBgA = el('gFocusBgA');
+  const $focusBgB = el('gFocusBgB');
+  const $focusAvatarA = el('gFocusAvatarA');
+  const $focusAvatarB = el('gFocusAvatarB');
+  const $focusNameA = el('gFocusNameA');
+  const $focusNameB = el('gFocusNameB');
+  const $focusSubA = el('gFocusSubA');
+  const $focusSubB = el('gFocusSubB');
+  const $focusVS = el('gFocusVS');
   const $sheetTiles = el('gSheetTiles');
   const $sheetCanvas = el('gSheetCanvas');
   const $sheetClose = el('gSheetClose');
@@ -312,23 +383,38 @@
   const $info = el('gInfo');
   const ctx = $canvas.getContext('2d');
 
+  // HiDPI canvas fitting (prevents blur in Focus/Fiche views)
+  function fitCanvas(canvas, minW, minH){
+    if(!canvas) return {ctx:null, w:0, h:0, dpr:1};
+    const r = canvas.getBoundingClientRect();
+    const rw = Math.floor(r.width || canvas.clientWidth || 0);
+    const rh = Math.floor(r.height || canvas.clientHeight || 0);
+    // Do NOT override CSS size (keeps responsive layout stable on mobile)
+    const w = (rw>0 ? rw : (minW||320));
+    const h = (rh>0 ? rh : (minH||240));
+    const dpr = Math.max(1, (window.devicePixelRatio || 1));
+    const pw = Math.max(1, Math.floor(w * dpr));
+    const ph = Math.max(1, Math.floor(h * dpr));
+    if(canvas.width !== pw) canvas.width = pw;
+    if(canvas.height !== ph) canvas.height = ph;
+    const c = canvas.getContext('2d');
+    if(c){
+      c.setTransform(dpr,0,0,dpr,0,0);
+      c.imageSmoothingEnabled = true;
+    }
+    canvas.__cw = w; canvas.__ch = h; canvas.__dpr = dpr;
+    return {ctx:c, w:w, h:h, dpr:dpr};
+  }
+
+  let _cw = 0, _ch = 0, _dpr = 1;
+
   function syncCanvasSize(){
-    if(!$canvas) return;
-    const r = $canvas.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(r.width || 0));
-    const h = Math.max(240, Math.floor(r.height || 0));
-    // Keep in CSS pixel space for simplicity (fast + predictable on mobile)
-    if($canvas.width !== w) $canvas.width = w;
-    if($canvas.height !== h) $canvas.height = h;
+    const f = fitCanvas($canvas, 320, 240);
+    _cw = f.w; _ch = f.h; _dpr = f.dpr;
   }
 
   function syncSheetCanvasSize(){
-    if(!$sheetCanvas) return;
-    const r = $sheetCanvas.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(r.width || 0));
-    const h = Math.max(240, Math.floor(r.height || 0));
-    if($sheetCanvas.width !== w) $sheetCanvas.width = w;
-    if($sheetCanvas.height !== h) $sheetCanvas.height = h;
+    fitCanvas($sheetCanvas, 320, 240);
   }
 
   function pct(x){
@@ -489,6 +575,10 @@
     radar: [ ['radar','Kiviat'] ],
   };
 
+  const INT_METRICS = new Set(['matches','wins','losses','perfs','contres','perfs_cum','contres_cum']);
+  let _FMT_FORCE_INT = false;
+
+
   const SIMPLE_KEYS = {
     // Keep it truly "simple": 4 metrics max.
     segments: new Set(['pointres_total','win_rate','perfs','contres']),
@@ -502,10 +592,6 @@
     const prev = $metric.value;
     $metric.innerHTML = '';
     let opts = METRICS[mode] || METRICS.segments;
-    if($uxMode && $uxMode.value==='simple'){
-      const keep = SIMPLE_KEYS[mode] || SIMPLE_KEYS.segments;
-      opts = opts.filter(([k,_]) => keep.has(k));
-    }
     for (const [k,label] of opts){
       const o = document.createElement('option');
       o.value = k; o.textContent = label;
@@ -697,7 +783,7 @@
   });
 
   function clearCanvas(){
-    ctx.clearRect(0,0,$canvas.width,$canvas.height);
+    ctx.clearRect(0,0,(_cw||1),(_ch||1));
     ctx.fillStyle = 'rgba(0,0,0,0)';
   }
 
@@ -719,7 +805,6 @@
 
   function fmtNum(v){
     if(v==null || !isFinite(v)) return '';
-    // keep integers as integers (counts: matchs, victoires, défaites, perfs, contres, ...)
     if(Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
     const av = Math.abs(v);
     if(av >= 100) return String(Math.round(v));
@@ -728,7 +813,22 @@
   }
 
   function cleanXLabel(s){
-    return (s||'').replace(/\s*#.*$/,'').trim();
+    s = (s||'').replace(/\s*#.*$/,'').trim();
+    // dd/mm/yyyy -> dd/mm (drop year for X axis readability)
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(.*)$/);
+    if(m){
+      const dd = String(m[1]).padStart(2,'0');
+      const mm = String(m[2]).padStart(2,'0');
+      return dd + '/' + mm + (m[4]||'');
+    }
+    // yyyy-mm-dd -> dd/mm
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(.*)$/);
+    if(m){
+      const dd = String(m[3]).padStart(2,'0');
+      const mm = String(m[2]).padStart(2,'0');
+      return dd + '/' + mm + (m[4]||'');
+    }
+    return s;
   }
 
   function kpiKeyForMetric(mode, metricKey){
@@ -809,7 +909,7 @@
     // title moved to HTML (better on mobile)
   }
 
-  function drawYAxis(ctxX, left, top, bottom, ymin, ymax){
+  function drawYAxis(ctxX, left, top, bottom, right, ymin, ymax){
     const ticks = 4;
     ctxX.font='12px system-ui';
     ctxX.fillStyle='rgba(154,164,178,0.9)';
@@ -822,7 +922,7 @@
       // grid
       ctxX.beginPath();
       ctxX.moveTo(left, yy);
-      ctxX.lineTo(ctxX.canvas.width-12, yy);
+      ctxX.lineTo(right, yy);
       ctxX.stroke();
       // label
       ctxX.fillText(fmtNum(v), 6, yy+4);
@@ -830,12 +930,12 @@
   }
 
   function drawAxes(){
-    const w=$canvas.width, h=$canvas.height;
+    const w=_cw, h=_ch;
     drawAxesBase(ctx, w, h);
   }
 
   function drawLine(labels, series){
-    const w=$canvas.width, h=$canvas.height;
+    const w=_cw, h=_ch;
     const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
@@ -848,14 +948,18 @@
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
     // y axis ticks + grid
-    drawYAxis(ctx, left, top, bottom, ymin, ymax);
+    drawYAxis(ctx, left, top, bottom, right, ymin, ymax);
 
     // x labels (sparse + rotated on dense charts)
     ctx.fillStyle='rgba(154,164,178,0.9)';
     ctx.font='12px system-ui';
     let step = Math.max(1, Math.floor(n/6));
     if(n>18) step = Math.max(step, Math.floor(n/4));
-    const rotate = n>10;
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
+    const rotate = hasDate || n>10;
     for(let i=0;i<n;i+=step){
       const t0 = cleanXLabel(labels[i]||'');
       const t = t0.length>14? (t0.slice(0,14)+'…') : t0;
@@ -864,7 +968,7 @@
       }else{
         ctx.save();
         ctx.translate(x(i)-6, h-26);
-        ctx.rotate(-0.55);
+        ctx.rotate(-0.7853981633974483);
         ctx.fillText(t, 0, 0);
         ctx.restore();
       }
@@ -930,7 +1034,7 @@
   }
 
   function drawBar(labels, series){
-    const w=$canvas.width, h=$canvas.height;
+    const w=_cw, h=_ch;
     const ctxB=$canvas.getContext('2d');
     ctxB.clearRect(0,0,w,h);
     if(!labels || !labels.length){ drawAxesBase(ctxB,w,h); return; }
@@ -948,18 +1052,28 @@
     if(ymax===ymin){ ymax=ymin+1; }
 
     const left=46, top=12, bottom=h-38, right=w-12;
-    const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
+    const k = Math.max(1, series.length);
+    const groupW = Math.max(10, Math.min(54, (right-left)/(n*1.25)));
+    const span = Math.max(0, (right-left) - groupW);
+    const x = (i)=> {
+      if(n<=1) return (left+right)/2;
+      return left + (groupW/2) + span*(i/(n-1));
+    };
     const y = (v)=> bottom - (bottom-top)*((v-ymin)/(ymax-ymin));
 
     drawAxesBase(ctxB,w,h);
-    drawYAxis(ctxB,left,top,bottom,ymin,ymax);
+    drawYAxis(ctxB,left,top,bottom,right,ymin,ymax);
 
     // x labels (sparse + rotated on dense charts)
     ctxB.fillStyle='rgba(154,164,178,0.9)';
     ctxB.font='12px system-ui';
     let step = Math.max(1, Math.floor(n/6));
     if(n>18) step = Math.max(step, Math.floor(n/4));
-    const rotate = n>10;
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
+    const rotate = hasDate || n>10;
     for(let i=0;i<n;i+=step){
       const t0 = cleanXLabel(labels[i]||'');
       const t = t0.length>14? (t0.slice(0,14)+'…') : t0;
@@ -968,14 +1082,12 @@
       }else{
         ctxB.save();
         ctxB.translate(x(i)-6, h-26);
-        ctxB.rotate(-0.55);
+        ctxB.rotate(-0.7853981633974483);
         ctxB.fillText(t, 0, 0);
         ctxB.restore();
       }
     }
 
-    const k = Math.max(1, series.length);
-    const groupW = Math.max(10, Math.min(54, (right-left)/(n*1.25)));
     const barW = Math.max(6, Math.floor((groupW-6)/k));
     const baseY = y(0);
 
@@ -1000,6 +1112,7 @@
         ctxB.textAlign = 'center';
         const cx = bx + (barW-2)/2;
         ctxB.fillText(fmtNum(v), cx, (v>=0? by-4 : by+bh+12));
+        ctxB.textAlign = 'left';
       }
     }
 
@@ -1048,13 +1161,15 @@
 
 
   function drawChartOn(canvas, labels, series, opts){
-    const ctx2 = canvas.getContext('2d');
+    const f = fitCanvas(canvas, 160, 120);
+    const ctx2 = f.ctx;
+    const w = f.w, h = f.h;
+    if(!ctx2) return;
     opts = opts || {};
     const maxLabels = (opts.maxLabels==null) ? 3 : Number(opts.maxLabels);
     const forceMinMax = !!opts.forceMinMax;
     const keyIdxs = Array.isArray(opts.keyIdxs) ? opts.keyIdxs : null;
-    const w=canvas.width, h=canvas.height;
-    // clear
+
     ctx2.clearRect(0,0,w,h);
     drawAxesBase(ctx2, w, h);
 
@@ -1069,27 +1184,41 @@
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
-    // y ticks
-    drawYAxis(ctx2, left, top, bottom, ymin, ymax);
+    drawYAxis(ctx2, left, top, bottom, right, ymin, ymax);
 
-    // x labels sparse
+    // x labels (sparse + drop year + rotate 45° when dense/dates)
     ctx2.fillStyle='rgba(154,164,178,0.9)';
     ctx2.font='11px system-ui';
+    const hasDate = (labels||[]).some(l=>{
+      const t = (l||'').trim();
+      return /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.test(t) || /^\d{4}-\d{1,2}-\d{1,2}/.test(t);
+    });
     const step = Math.max(1, Math.floor(n/4));
+    const rotate = hasDate || n>8;
     for(let i=0;i<n;i+=step){
-      const t = cleanXLabel(labels[i]||'');
-      ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
+      const t0 = cleanXLabel(labels[i]||'');
+      const t = t0.length>12? (t0.slice(0,12)+'…') : t0;
+      if(!rotate){
+        ctx2.fillText(t, x(i)-12, h-24);
+      }else{
+        ctx2.save();
+        ctx2.translate(x(i)-6, h-26);
+        ctx2.rotate(-0.7853981633974483);
+        ctx2.fillText(t, 0, 0);
+        ctx2.restore();
+      }
     }
 
-    for(const s of series){
+    for(let si=0; si<series.length; si++){
+      const s = series[si];
       const hue = hashHue(s.label);
       const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.9)`;
       ctx2.strokeStyle = col;
       ctx2.lineWidth = 3;
       ctx2.beginPath();
       let started=false;
-      let firstIdx=-1; let firstV=null;
-      let lastIdx=-1; let lastX=0; let lastY=0; let lastV=null;
+      let firstIdx=-1;
+      let lastIdx=-1;
       let maxIdx=-1; let maxV=-Infinity;
       let minIdx=-1; let minV=Infinity;
       for(let i=0;i<n;i++){
@@ -1098,135 +1227,46 @@
         const xx=x(i), yy=y(v);
         if(!started){ ctx2.moveTo(xx,yy); started=true; }
         else ctx2.lineTo(xx,yy);
-        if(firstIdx<0){ firstIdx=i; firstV=v; }
+        if(firstIdx<0) firstIdx=i;
         if(v>maxV){ maxV=v; maxIdx=i; }
         if(v<minV){ minV=v; minIdx=i; }
-        lastIdx=i; lastX=xx; lastY=yy; lastV=v;
+        lastIdx=i;
       }
       ctx2.stroke();
 
-      // value labels: key points only (start/end/min/max)
-      if(lastIdx>=0){
-        const idxs=[];
-        const pushUniq=(i)=>{ if(i!=null && i>=0 && !idxs.includes(i)) idxs.push(i); };
-        if(keyIdxs && keyIdxs.length){
-          for(const i of keyIdxs) pushUniq(i);
-        }else{
-          pushUniq(firstIdx);
-          pushUniq(lastIdx);
-          if(forceMinMax || n>=8){ pushUniq(maxIdx); pushUniq(minIdx); }
-        }
-        ctx2.fillStyle = col;
-        ctx2.font='600 11px system-ui';
-        const cap = Math.max(1, isFinite(maxLabels) ? Math.floor(maxLabels) : 3);
-        for(const i of idxs.slice(0, cap)){
-          const v=s.values[i];
-          if(v==null || !isFinite(v)) continue;
-          const xx=x(i), yy=y(v);
-          ctx2.fillText(fmtNum(v), Math.min(xx+6, w-60), yy-6);
-        }
+      // numeric labels: prefer provided keyIdxs (Fiche), otherwise a few key points
+      const idxs = [];
+      const pushUniq = (i)=>{ if(i!=null && i>=0 && !idxs.includes(i)) idxs.push(i); };
+      if(keyIdxs && keyIdxs.length){
+        for(const i of keyIdxs) pushUniq(i);
+      }else{
+        pushUniq(firstIdx);
+        pushUniq(lastIdx);
+        if(forceMinMax || n>=8){ pushUniq(minIdx); pushUniq(maxIdx); }
       }
-    }
-
-    // legend removed for mini graphs (title already shows the player; club overlay is optional)
-  }
-
-  function drawBarOn(canvas, labels, series){
-    const ctx2 = canvas.getContext('2d');
-    const w=canvas.width, h=canvas.height;
-    ctx2.clearRect(0,0,w,h);
-    drawAxesBase(ctx2, w, h);
-    if(!labels || !labels.length) return;
-
-    const left=54, top=26, right=w-12, bottom=h-54;
-    const n=labels.length;
-
-    // y range include 0
-    let ymin=0, ymax=0;
-    for(const s of series){
-      for(const v of s.values){
-        if(v==null || !isFinite(v)) continue;
-        ymin = Math.min(ymin, v);
-        ymax = Math.max(ymax, v);
-      }
-    }
-    if(ymax===ymin) ymax = ymin + 1;
-    const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
-    const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
-    drawYAxis(ctx2, left, top, bottom, ymin, ymax);
-
-    // x labels sparse
-    ctx2.fillStyle='rgba(154,164,178,0.9)';
-    ctx2.font='11px system-ui';
-    const step = Math.max(1, Math.floor(n/4));
-    for(let i=0;i<n;i+=step){
-      const t = cleanXLabel(labels[i]||'');
-      ctx2.fillText(t.length>12? (t.slice(0,12)+'…') : t, x(i)-12, h-24);
-    }
-
-    const k = Math.max(1, series.length);
-    const groupW = Math.max(10, Math.min(44, (right-left)/(n*1.25)));
-    const barW = Math.max(6, Math.floor((groupW-6)/k));
-    const baseY = y(0);
-
-    for(let i=0;i<n;i++){
-      const gx = x(i) - (groupW/2);
-      for(let j=0;j<series.length;j++){
-        const s=series[j];
+      const chosen = idxs.slice(0, Math.max(1, Math.min(4, maxLabels)));
+      ctx2.fillStyle = col;
+      ctx2.font='600 12px system-ui';
+      for(const i of chosen){
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
-        const hue = hashHue(s.label);
-        const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.78)`;
-        ctx2.fillStyle = col;
-        const bx = gx + 3 + j*barW;
-        const yv = y(v);
-        const bh = Math.abs(baseY - yv);
-        const by = v>=0 ? yv : baseY;
-        ctx2.fillRect(bx, by, barW-2, Math.max(1,bh));
-        // value label (few only to avoid clutter)
-        if(n<=10 || i===0 || i===n-1){
-          ctx2.fillStyle = col;
-          ctx2.font='600 11px system-ui';
-          ctx2.textAlign = 'center';
-          const cxv = bx + (barW-2)/2;
-          ctx2.fillText(fmtNum(v), cxv, (v>=0? by-4 : by+bh+12));
-        }
+        const xx=x(i), yy=y(v);
+        const alignRight = (i >= n-2);
+        const dx = alignRight ? -6 : 6;
+        const tx = Math.max(10, Math.min(w-80, xx+dx));
+        const ty = yy - 6 + (si*14);
+        ctx2.fillText(fmtNum(v), tx, ty);
       }
     }
   }
 
-  function hashHue(s){
-    let h=0;
-    for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))>>>0;
-    return h % 360;
-  }
-
-  // object-fit: cover with vertical bias, for on-canvas portraits
-  function drawCoverBias(c, img, x, y, w, h, biasY){
-    if(!img) return;
-    const iw = img.width || 1, ih = img.height || 1;
-    const ir = iw / ih, tr = w / h;
-    const by = (biasY==null || !isFinite(biasY)) ? 0.5 : Math.max(0, Math.min(1, biasY));
-    let sx=0, sy=0, sw=iw, sh=ih;
-    if(ir > tr){
-      sh = ih;
-      sw = Math.max(1, Math.floor(sh * tr));
-      sx = Math.floor((iw - sw) / 2);
-    }else{
-      sw = iw;
-      sh = Math.max(1, Math.floor(sw / tr));
-      sy = Math.floor((ih - sh) * by);
-    }
-    c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-  }
-
-  function drawRadar(a, b, axes, bgA, bgB){
-    const w=$canvas.width, h=$canvas.height;
+function drawRadar(a, b, axes, bgA, bgB){
+    const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
     const R=Math.min(w,h)*0.38;
     ctx.clearRect(0,0,w,h);
 
-    // Background portraits (desktop/tablet only). Mobile stays clean.
+    // Background portraits (desktop/tablet only). Keep mobile ultra-readable.
     const isMobile = w < 620;
     if(!isMobile && (bgA || bgB)){
       const gap = R * 0.95;
@@ -1234,7 +1274,8 @@
       const rightX = Math.min(w, Math.ceil(cx + gap));
       const rightW = Math.max(0, Math.floor(w - rightX));
       ctx.save();
-      ctx.globalAlpha = 0.22; // slightly less transparent (requested)
+      ctx.globalAlpha = 0.22;
+      // blur + darken so labels stay readable
       try{ ctx.filter = 'blur(2px) brightness(0.55)'; }catch(e){}
       if(bgA && leftW > 60)  drawCoverBias(ctx, bgA, 0, 0, leftW, h, 0.18);
       if(bgB && rightW > 60) drawCoverBias(ctx, bgB, rightX, 0, rightW, h, 0.18);
@@ -1447,13 +1488,46 @@
 
   // Heatmap removed.
 
-  async function render(){
+  
+  function updateFocusHeader(aLic, bLic){
+    if(!$focusHdr) return;
+    if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
+    $focusHdr.style.display = 'block';
+    // Show/hide B side
+    const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
+    if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
+    if(document.getElementById('gFocusCardB')) document.getElementById('gFocusCardB').style.display = hasB ? 'flex' : 'none';
+
+    const pa = PLAYERS[aLic] || null;
+    const pb = hasB ? (PLAYERS[bLic] || null) : null;
+
+    if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
+    if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
+
+    function subText(p, lic){
+      if(!p) return '';
+      const s = p.summary || {};
+      const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
+      return `${m} matchs · ${w} V · ${l} D`;
+    }
+    if($focusSubA) $focusSubA.textContent = pa ? subText(pa, aLic) : '';
+    if($focusSubB) $focusSubB.textContent = pb ? subText(pb, bLic) : '';
+
+    // images
+    if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);
+    if($focusBgA) setImgWithFallback($focusBgA, aLic);
+    if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
+    if($focusBgB) setImgWithFallback($focusBgB, bLic);
+  }
+
+async function render(){
     if(!MANIFEST){ return; }
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
-    const bLic = ($compare && $compare.value) ? ($compare.value || '') : '';
+    const aLic = selected[0] || '';
+    const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
-    if($club && $club.checked) await ensureClub();
+    updateFocusHeader(aLic, bLic);
     syncCanvasSize();
     // Small fade to make transitions less harsh on mobile
     try{
@@ -1472,18 +1546,20 @@
     // view controls enabled only on line modes
     const isLineMode = (mode==='segments' || mode==='timeline' || mode==='expected');
     $view.disabled = !isLineMode;
-    $delta.disabled = !isLineMode;
+    if($delta) $delta.disabled = !isLineMode;
     $exportBtn.disabled = false;
 
     // Comparison rules: if compare selected, we enforce A vs B on line modes too
-    const aLic = selected[0] || '';
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
+    if($club){
     if(isLineMode && hasB){
       $club.checked = false;
       $club.disabled = true;
     }else{
       $club.disabled = false;
     }
+  }
+
 
     if(mode==='radar'){
       if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
@@ -1494,7 +1570,7 @@
 
       let b = null;
       if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;
-      const club = ($club.checked && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
+      const club = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
 
       const aSeries = { label: PLAYERS[aLic].name || aLic, values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
       let bSeries = null;
@@ -1503,14 +1579,16 @@
       }else if(club){
         bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0), color: COLOR_CLUB };
       }
+
+      // Kiviat background portraits (subtle). Mobile keeps it clean.
+      let bgA = null, bgB = null;
+      try{ const pa = await getPhoto(aLic); bgA = pa && pa.img ? pa.img : null; }catch(e){}
+      if(hasB){
+        try{ const pb = await getPhoto(bLic); bgB = pb && pb.img ? pb.img : null; }catch(e){}
+      }
+
       setTitleText(`Kiviat profil — ${phaseLbl}`);
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
-      // subtle portraits in the background (desktop/tablet only)
-      let bgA = null, bgB = null;
-      try{ bgA = await getPhotoImg(aLic); }catch(e){}
-      if(hasB){
-        try{ bgB = await getPhotoImg(bLic); }catch(e){}
-      }
       drawRadar(aSeries, bSeries, axes, bgA, bgB);
       $info.textContent = 'Kiviat: A vs ' + (bSeries? bSeries.label : '—');
 
@@ -1540,6 +1618,7 @@
 
     // line modes: segments/timeline/expected
     const metric = $metric.value;
+    _FMT_FORCE_INT = INT_METRICS.has(metric);
     try{ CURRENT_METRIC_LABEL = ($metric.options[$metric.selectedIndex] && $metric.options[$metric.selectedIndex].textContent) ? $metric.options[$metric.selectedIndex].textContent : metric; }catch(e){ CURRENT_METRIC_LABEL = metric; }
     const scope = $scope.value;
     const phase = $phase.value;
@@ -1563,13 +1642,13 @@
       bundle.series[1].color = COLOR_B;
     }
     // Club is always last when enabled
-    if($club.checked && bundle && bundle.series && bundle.series.length>=1){
+    if(($club && $club.checked) && bundle && bundle.series && bundle.series.length>=1){
       const last = bundle.series[bundle.series.length-1];
       if(last && (last.label==='Club')) last.color = COLOR_CLUB;
     }
 
     // optional delta series (A - B) when comparing
-    if(hasB && $delta.checked && bundle.series.length>=2){
+    if(hasB && $delta && $delta.checked && bundle.series.length>=2){
       const aVals = bundle.series[0].values;
       const bVals = bundle.series[1].values;
       const n = Math.max(aVals.length, bVals.length);
@@ -1640,7 +1719,7 @@
           b2.series[0].color = (lic===aLic) ? COLOR_A : COLOR_B;
         }
         // add club overlay if enabled and allowed
-        if($club.checked && !$club.disabled){
+        if(($club && $club.checked) && !$club.disabled){
           if(mode==='segments'){
             const c = seriesSegments(metric, scope, phase, []); // uses selected default but includes club overlay; we want only club values aligned.
             // rebuild club series directly from DATA
@@ -1698,13 +1777,13 @@
       const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
       const Araw = (((PLAYERS[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
       const Braw = bLic ? ((((PLAYERS[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
-      const Craw = ($club.checked && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
+      const Craw = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
       // Determine closest axis from tap position
       const rect = $canvas.getBoundingClientRect();
-      const sx = (clientX - rect.left) * ($canvas.width / rect.width);
-      const sy = (clientY - rect.top) * ($canvas.height / rect.height);
-      const cx = $canvas.width/2;
-      const cy = $canvas.height/2+12;
+      const sx = (clientX - rect.left);
+      const sy = (clientY - rect.top);
+      const cx = rect.width/2;
+      const cy = rect.height/2 + 12;
       const dx = sx - cx;
       const dy = sy - cy;
       const ang = Math.atan2(dy, dx);
@@ -1777,91 +1856,29 @@
   });
   $canvas.addEventListener('pointerleave', hideTip);
 
-  // Mobile UX: collapsible advanced filters
-  let _filtersOpen = false;
-  function syncFiltersPanel(){
-    if(!$moreFilters) return;
-    const isMobile = window.matchMedia('(max-width: 560px)').matches;
-    if(isMobile){
-      // Important: remove inline display set by desktop to let CSS/media-query drive visibility.
-      $moreFilters.style.display = '';
-      $moreFilters.classList.toggle('is-open', _filtersOpen);
-    }else{
-      // Always visible on desktop
-      $moreFilters.classList.remove('is-open');
-      $moreFilters.style.display = 'flex';
-    }
-  }
-  if($toggleFilters){
-    $toggleFilters.addEventListener('click', ()=>{
-      _filtersOpen = !_filtersOpen;
-      syncFiltersPanel();
-    });
-  }
-  window.addEventListener('resize', syncFiltersPanel);
-  // initial
-  syncFiltersPanel();
-
-  // UX mode (simple/expert)
-  function applyUxMode(){
-    if(!$uxMode) return;
-    const simple = ($uxMode.value === 'simple');
-
-    // Force overlay in simple mode (mini-graphs are more complex visually)
-    if(simple && $view){
-      $view.value = 'overlay';
-      for(const o of $view.options){
-        if(o.value==='multiples') o.disabled = true;
-      }
-    }else if($view){
-      for(const o of $view.options){
-        if(o.value==='multiples') o.disabled = false;
-      }
-    }
-
-    // Hide advanced toggles in simple mode
-    if($delta && $delta.closest('.g-pill')) $delta.closest('.g-pill').style.display = simple ? 'none' : '';
-    if($club && $club.closest('.g-pill')) $club.closest('.g-pill').style.display = simple ? 'none' : '';
-    if($chartType) $chartType.style.display = simple ? 'none' : '';
-
-    // In simple mode on mobile: keep advanced filters collapsed by default
-    if(simple){ _filtersOpen = false; syncFiltersPanel(); }
-  }
-  if($uxMode){
-    const isMobile = window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
-    $uxMode.value = isMobile ? 'simple' : 'expert';
-    applyUxMode();
-    $uxMode.addEventListener('change', ()=>{ applyUxMode(); setMetricOptions(); render(); hideTip(); });
-  }
-
   // Focus mode (fullscreen)
   let _isFocus = false;
   function setFocus(on){
     _isFocus = !!on;
-    if(_isFocus){
-      wrap.classList.add('g-focus');
-      if($controlsRow) $controlsRow.style.display='none';
-      if($focusBar) $focusBar.style.display='flex';
-      if($focusTitle) $focusTitle.textContent = $title ? $title.textContent : 'Graphiques';
-      document.documentElement.style.overflow='hidden';
-      document.body.style.overflow='hidden';
-    }else{
-      wrap.classList.remove('g-focus');
-      if($controlsRow) $controlsRow.style.display='flex';
-      if($focusBar) $focusBar.style.display='none';
-      document.documentElement.style.overflow='';
-      document.body.style.overflow='';
+    wrap.classList.toggle('g-focus', _isFocus);
+    if($focus){
+      $focus.textContent = _isFocus ? '← Retour' : '⤢ Focus';
+      $focus.setAttribute('aria-pressed', _isFocus ? 'true' : 'false');
     }
+    if($focusHdr) $focusHdr.style.display = _isFocus ? 'block' : 'none';
+    document.documentElement.style.overflow = _isFocus ? 'hidden' : '';
+    document.body.style.overflow = _isFocus ? 'hidden' : '';
   }
-  if($focus) $focus.addEventListener('click', ()=> setFocus(!_isFocus));
-  if($focusClose) $focusClose.addEventListener('click', ()=> setFocus(false));
+  if($focus) $focus.addEventListener('click', ()=>{ setFocus(!_isFocus); render(); });
+  if($focusClose) $focusClose.addEventListener('click', ()=>{ setFocus(false); render(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus){ setFocus(false); render(); } });
 
   $metric.addEventListener('change', ()=>{ render(); hideTip(); });
   $chartType.addEventListener('change', ()=>{ render(); hideTip(); });
   $scope.addEventListener('change', render);
   $phase.addEventListener('change', render);
   $view.addEventListener('change', render);
-  $delta.addEventListener('change', render);
+  if($delta) $delta.addEventListener('change', render);
   $compare.addEventListener('change', ()=>{
     // keep A as first selected; if none, auto select first player in data
     if($compare.value && selected.length===0){
@@ -1870,7 +1887,7 @@
     }
     render();
   });
-  $club.addEventListener('change', render);
+  if($club) $club.addEventListener('change', render);
 
   // Context filters
   function ctxChanged(){
@@ -1883,12 +1900,13 @@
   if($ctxClose) $ctxClose.addEventListener('change', ctxChanged);
   if($scroll) $scroll.addEventListener('input', ()=> render());
 
-  $exportBtn.addEventListener('click', ()=>{
+  $exportBtn.addEventListener('click', async ()=>{
     const mode = $mode.value;
     const view = $view.value;
     const now = new Date();
     const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');
-    const safe = (s)=> (s||'graph').replace(/[^a-z0-9_-]+/gi,'_').slice(0,60);
+    const safe = (s)=> String(s||'').normalize('NFKD').replace(/[^\w\d\- ]+/g,'').trim().replace(/\s+/g,'_').slice(0,60);
+
     function dl(canvas, name){
       try{
         const url = canvas.toDataURL('image/png');
@@ -1898,8 +1916,204 @@
         a.click();
       }catch(e){ console.warn(e); }
     }
+
+    // Like CSS object-fit: cover, but with a vertical bias.
+    // biasY in [0..1] (0 = keep top, 0.5 = center, 1 = keep bottom)
+    function drawCover(c, img, x, y, w, h, biasY){
+      const iw = img.width || 1, ih = img.height || 1;
+      const ir = iw / ih, tr = w / h;
+      const by = (biasY==null || !isFinite(biasY)) ? 0.5 : Math.max(0, Math.min(1, biasY));
+      let sx=0, sy=0, sw=iw, sh=ih;
+      if(ir > tr){
+        // crop width
+        sh = ih;
+        sw = Math.max(1, Math.floor(sh * tr));
+        sx = Math.floor((iw - sw) / 2);
+      }else{
+        // crop height (use bias)
+        sw = iw;
+        sh = Math.max(1, Math.floor(sw / tr));
+        sy = Math.floor((ih - sh) * by);
+      }
+      c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+
+    function roundRectPath(c, x, y, w, h, r){
+      const rr = Math.min(r, w/2, h/2);
+      c.beginPath();
+      c.moveTo(x+rr, y);
+      c.arcTo(x+w, y, x+w, y+h, rr);
+      c.arcTo(x+w, y+h, x, y+h, rr);
+      c.arcTo(x, y+h, x, y, rr);
+      c.arcTo(x, y, x+w, y, rr);
+      c.closePath();
+    }
+
+    async function buildCompositeFocus(){
+      const base = $canvas;
+      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
+      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 420);
+      const headerH = 140;
+      const pad = 12;
+
+      const aLic = selected[0] || '';
+      const bLic = ($compare && $compare.value) ? $compare.value : '';
+      const aP = await getPhoto(aLic);
+      const bP = await getPhoto(bLic);
+
+      const out = document.createElement('canvas');
+      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
+      out.width = Math.floor(w * dpr);
+      out.height = Math.floor((headerH + pad + h) * dpr);
+      const c = out.getContext('2d');
+      c.setTransform(dpr,0,0,dpr,0,0);
+
+      // bg
+      c.fillStyle = '#0b1220';
+      c.fillRect(0,0,w,headerH+pad+h);
+
+      // blurred split background
+      c.save();
+      c.globalAlpha = 0.95;
+      c.filter = 'blur(10px) brightness(0.55)';
+      if(aP && aP.img) drawCover(c, aP.img, 0, 0, w/2, headerH, 0.18);
+      if(bP && bP.img) drawCover(c, bP.img, w/2, 0, w/2, headerH, 0.18);
+      c.restore();
+      c.filter = 'none';
+
+      // shade
+      c.fillStyle = 'rgba(0,0,0,0.25)';
+      c.fillRect(0,0,w,headerH);
+
+      // cards
+      const cardW = Math.min(360, Math.floor((w - 3*pad) / 2));
+      const cardH = 92;
+      const y = Math.floor((headerH - cardH) / 2);
+      const xA = Math.max(pad, Math.floor((w/2 - cardW) / 2));
+      const xB = Math.min(w - pad - cardW, Math.floor(w/2 + (w/2 - cardW) / 2));
+
+      function drawCard(x, lic, photo, color){
+        // box
+        c.save();
+        c.fillStyle = 'rgba(9,14,25,0.72)';
+        c.strokeStyle = 'rgba(255,255,255,0.08)';
+        c.lineWidth = 1;
+        roundRectPath(c, x, y, cardW, cardH, 16);
+        c.fill(); c.stroke();
+        c.restore();
+
+        // avatar
+        const av = 64;
+        const ax = x + 12, ay = y + Math.floor((cardH - av)/2);
+        c.save();
+        roundRectPath(c, ax, ay, av, av, 16);
+        c.clip();
+        if(photo && photo.img){
+          drawCover(c, photo.img, ax, ay, av, av, 0.18);
+        }else{
+          c.fillStyle = 'rgba(0,0,0,0.22)';
+          c.fillRect(ax,ay,av,av);
+        }
+        c.restore();
+
+        // glow border
+        c.save();
+        c.strokeStyle = color || 'rgba(255,255,255,0.12)';
+        c.lineWidth = 2;
+        roundRectPath(c, ax, ay, av, av, 16);
+        c.stroke();
+        c.restore();
+
+        // text
+        const p = PLAYERS[lic] || null;
+        const name = p ? (p.name || lic) : (lic || '—');
+        const s = p ? (p.summary || {}) : {};
+        const m = Number(s.matches||0), w1 = Number(s.wins||0), l1 = Number(s.losses||0);
+        const sub = p ? `${m} matchs · ${w1} V · ${l1} D` : '';
+
+        c.fillStyle = '#e9eef8';
+        c.font = '800 15px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.textBaseline = 'top';
+        c.fillText(name, x + 12 + av + 10, y + 22);
+        c.fillStyle = 'rgba(255,255,255,0.75)';
+        c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.fillText(sub, x + 12 + av + 10, y + 44);
+      }
+
+      drawCard(xA, aLic, aP, 'rgba(120,200,255,0.55)');
+      if(bLic){
+        drawCard(xB, bLic, bP, 'rgba(255,160,120,0.55)');
+        // VS
+        c.save();
+        c.fillStyle = 'rgba(0,0,0,0.32)';
+        c.strokeStyle = 'rgba(255,255,255,0.08)';
+        c.lineWidth = 1;
+        const vsW=52, vsH=28;
+        const vx = Math.floor((w - vsW)/2), vy = Math.floor((headerH - vsH)/2);
+        roundRectPath(c, vx, vy, vsW, vsH, 14);
+        c.fill(); c.stroke();
+        c.fillStyle = '#e9eef8';
+        c.font = '900 13px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.textBaseline = 'middle';
+        c.textAlign = 'center';
+        c.fillText('VS', vx + vsW/2, vy + vsH/2);
+        c.restore();
+      }
+
+      // graph
+      c.drawImage(base, 0, headerH + pad, w, h);
+      return out;
+    }
+
+    async function buildCompositeSheet(){
+      const base = $sheetCanvas;
+      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
+      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 340);
+      const headerH = 150;
+      const pad = 12;
+
+      // Try to infer current lic from sheet name match; fallback: selected[0]
+      const lic = selected[0] || '';
+      const photo = await getPhoto(lic);
+
+      const out = document.createElement('canvas');
+      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
+      out.width = Math.floor(w * dpr);
+      out.height = Math.floor((headerH + pad + h) * dpr);
+      const c = out.getContext('2d');
+      c.setTransform(dpr,0,0,dpr,0,0);
+
+      c.fillStyle = '#0b1220';
+      c.fillRect(0,0,w,headerH+pad+h);
+
+      // photo panel
+      const phW = 110, phH = 140;
+      const px = pad, py = Math.floor((headerH - phH)/2);
+      c.save();
+      roundRectPath(c, px, py, phW, phH, 16);
+      c.clip();
+      if(photo && photo.img) drawCover(c, photo.img, px, py, phW, phH, 0.18);
+      else { c.fillStyle='rgba(0,0,0,0.22)'; c.fillRect(px,py,phW,phH); }
+      c.restore();
+      c.strokeStyle='rgba(255,255,255,0.10)'; c.lineWidth=1;
+      roundRectPath(c, px, py, phW, phH, 16); c.stroke();
+
+      const name = $sheetName ? ($sheetName.textContent||'') : '';
+      const sub  = $sheetSub ? ($sheetSub.textContent||'') : '';
+      c.fillStyle='#e9eef8';
+      c.font='800 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      c.textBaseline='top';
+      c.fillText(name, px+phW+12, py+10);
+      c.fillStyle='rgba(255,255,255,0.75)';
+      c.font='12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      c.fillText(sub, px+phW+12, py+40);
+
+      c.drawImage(base, 0, headerH + pad, w, h);
+      return out;
+    }
+
+    // If we are in mini-graphs view, keep current behavior (multiple downloads)
     if(view==='multiples' && $multi.style.display!=='none'){
-      // Browsers often block multiple immediate downloads; stagger them slightly.
       const canv = Array.from($multi.querySelectorAll('canvas'));
       canv.forEach((cv,i)=>{
         const titleEl = cv.parentElement && cv.parentElement.querySelector('div');
@@ -1907,9 +2121,24 @@
         const fname = safe(`graph_${mode}_${who}_${stamp}`);
         window.setTimeout(()=> dl(cv, fname), i*250);
       });
-    }else{
-      dl($canvas, safe(`graph_${mode}_${stamp}`));
+      return;
     }
+
+    // In Focus -> export composite with photos
+    try{
+      if(_isFocus){
+        const out = await buildCompositeFocus();
+        dl(out, safe(`focus_${mode}_${stamp}`));
+        return;
+      }
+      if($sheetPop && $sheetPop.style.display !== 'none'){
+        const out = await buildCompositeSheet();
+        dl(out, safe(`fiche_${mode}_${stamp}`));
+        return;
+      }
+    }catch(e){ console.warn(e); }
+
+    dl($canvas, safe(`graph_${mode}_${stamp}`));
   });
 
   setMetricOptions();

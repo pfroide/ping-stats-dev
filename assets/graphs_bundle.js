@@ -54,6 +54,9 @@
     .g-sheet{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:flex-end; justify-content:center; z-index:12000; }
     .g-sheet .box{ width:min(820px, 96vw); max-height:92vh; overflow:auto; border:1px solid #263043; border-radius:16px 16px 0 0; background:#0b1220; padding:12px; }
     .g-sheet .hdr{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
+    .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
+    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     .g-sheet .hdr .nm{ font-weight:900; font-size:15px; }
     .g-tiles{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-top:10px; }
     .g-tile{ border:1px solid #263043; border-radius:14px; background:rgba(255,255,255,0.04); padding:10px 12px; }
@@ -171,9 +174,12 @@
 
       <div class="g-sheet" id="gSheetPop"><div class="box">
         <div class="hdr">
-          <div>
-            <div class="nm" id="gSheetName">Fiche joueur</div>
-            <div class="g-muted" style="font-size:12px" id="gSheetSub"></div>
+          <div class="sh-left">
+            <div class="sh-photo"><img id="gSheetPhoto" alt=""/></div>
+            <div>
+              <div class="nm" id="gSheetName">Fiche joueur</div>
+              <div class="g-muted" style="font-size:12px" id="gSheetSub"></div>
+            </div>
           </div>
           <div class="g-row" style="gap:8px;">
             <button id="gSheetDetails" class="g-btn" type="button">Détails</button>
@@ -183,7 +189,7 @@
         <div class="g-tiles" id="gSheetTiles"></div>
         <div class="sec">
           <h4>Graphe principal</h4>
-          <canvas id="gSheetCanvas" class="g-canvas" width="980" height="420" style="height:340px"></canvas>
+          <canvas id="gSheetCanvas" class="g-canvas" width="980" height="420" style="height:420px"></canvas>
         </div>
         <div class="sec" id="gSheetMatches" style="display:none;">
           <h4>Match par match</h4>
@@ -193,6 +199,54 @@
     </div>
   `;
   root.appendChild(wrap);
+
+  // Player photos (offline): images_joueurs/<licence>.(webp|jpg|jpeg|png)
+  const PHOTO_DIR = 'images_joueurs/';
+  const PHOTO_EXTS = ['webp','jpg','jpeg','png'];
+  const _PHOTO_CACHE = Object.create(null);
+
+  function photoCandidates(lic){
+    if(!lic) return [];
+    return PHOTO_EXTS.map(ext => PHOTO_DIR + lic + '.' + ext);
+  }
+
+  function setImgWithFallback(imgEl, lic){
+    if(!imgEl) return;
+    const cands = photoCandidates(lic);
+    let i = 0;
+    imgEl.referrerPolicy = 'no-referrer';
+    imgEl.loading = 'lazy';
+    imgEl.decoding = 'async';
+    imgEl.onerror = ()=>{
+      i++;
+      if(i < cands.length) imgEl.src = cands[i];
+      else imgEl.removeAttribute('src');
+    };
+    if(cands.length) imgEl.src = cands[0];
+    else imgEl.removeAttribute('src');
+  }
+
+  function loadImg(url){
+    return new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.referrerPolicy = 'no-referrer';
+      im.onload = ()=> resolve(im);
+      im.onerror = ()=> reject(new Error('img'));
+      im.src = url;
+    });
+  }
+
+  async function getPhotoImg(lic){
+    if(!lic) return null;
+    if(_PHOTO_CACHE[lic] !== undefined) return _PHOTO_CACHE[lic];
+    _PHOTO_CACHE[lic] = (async ()=>{
+      for(const url of photoCandidates(lic)){
+        try{ return await loadImg(url); }catch(e){}
+      }
+      return null;
+    })();
+    return _PHOTO_CACHE[lic];
+  }
 
   // KPI help popup (2 lines + link)
   const $pop = document.createElement('div');
@@ -239,6 +293,7 @@
   const $sheetPop = el('gSheetPop');
   const $sheetName = el('gSheetName');
   const $sheetSub = el('gSheetSub');
+  const $sheetPhoto = el('gSheetPhoto');
   const $sheetTiles = el('gSheetTiles');
   const $sheetCanvas = el('gSheetCanvas');
   const $sheetClose = el('gSheetClose');
@@ -306,90 +361,94 @@
     ];
     $sheetTiles.innerHTML = tiles.map(x=>`<div class="g-tile"><div class="t">${esc(x.t)}</div><div class="v">${esc(x.v)}</div><div class="s">${esc(x.s||'')}</div></div>`).join('');
 
-    // Affiche la fiche AVANT de mesurer le canvas (sinon largeur=0 -> blur)
+    // photo
+    setImgWithFallback($sheetPhoto, lic);
+
+    // Show first to avoid 0x0 canvas (blurry)
     $sheetMatches.style.display = 'none';
     $sheetPop.style.display = 'flex';
 
-    // --- Selections UI (phase/scope)
-    const scopeSel = ($scope && $scope.value) ? String($scope.value) : 'tous';
-    const phaseSel = ($phase && $phase.value) ? String($phase.value) : 'all';
-
-    // timeline choisi selon scope (fallback sur 'tous')
-    const tlAll = (p.timeline && (p.timeline[scopeSel] || p.timeline['tous'] || p.timeline['indiv'] || p.timeline['equipe'])) || [];
-
-    // Filtres contexte (mieux/moins/serrés) -> pour la liste des matchs
-    const ctxBetter = $ctxBetter && $ctxBetter.checked;
-    const ctxWorse = $ctxWorse && $ctxWorse.checked;
-    const ctxClose = $ctxClose && $ctxClose.checked;
-    const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
-    const keepRow = (x)=>{
-      if(!(phaseSel==='all' || (''+x.phase)==phaseSel)) return false;
-      const d = Number(x.diff_pts||0);
-      if(!wantAllRel){
-        if(ctxBetter && !(d < 0)) return false;
-        if(ctxWorse && !(d > 0)) return false;
-      }
-      if(ctxClose && !x.close_match) return false;
-      return true;
-    };
-
-    // --- Graphe principal (Fiche): points en début de segment (+ Fin)
-    // (indépendant des filtres contexte, uniquement scope/phase)
-    const tlPhaseOnly = tlAll.filter(x => (phaseSel==='all' || (''+x.phase)==phaseSel));
-    const segList = [];
-    const seen = new Set();
-    for(const r of tlPhaseOnly){
-      const sid = (r.segment_id!=null ? String(r.segment_id) : '');
-      const key = (r.phase!=null ? ('p'+r.phase+'_s'+sid) : ('s'+sid)) + '|' + String(r.segment_nom||'');
-      const ps = (r.pts_start!=null ? Number(r.pts_start) : NaN);
-      if(!seen.has(key) && isFinite(ps)){
-        seen.add(key);
-        segList.push({label: String(r.segment_nom || ('S'+sid) || ''), v: ps});
-      }
-    }
-    // Fin = dernier pts_start non-null dans la phase
-    let fin = null;
-    for(let i=tlPhaseOnly.length-1;i>=0;i--){
-      const v = tlPhaseOnly[i] && tlPhaseOnly[i].pts_start;
-      const fv = (v!=null ? Number(v) : NaN);
-      if(isFinite(fv)){ fin = fv; break; }
-    }
-    if(fin!=null && isFinite(fin)) segList.push({label:'Fin', v:Number(fin)});
-
-    // draw (après layout)
     requestAnimationFrame(()=>{
+      // main chart: Points mensuels au début de segment (selon la phase sélectionnée)
       syncSheetCanvasSize();
-      const labels = segList.map(x=>x.label);
-      const vals = segList.map(x=>x.v);
-      const series = [{label: p.name || lic, values: vals, color: COLOR_A}];
-      drawChartOn($sheetCanvas, labels, series, {keyLabels:true, maxLabels:4});
-    });
+      const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+      const tlAll = (p.timeline && (p.timeline[scopeSel] || p.timeline['tous'] || p.timeline['indiv'] || p.timeline['equipe'])) || [];
+      const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
+      const tl = (tlAll || []).filter(r => (phaseSel==='all' || (''+r.phase)==phaseSel));
 
-    // details table (match by match) — filtrée par phase + contexte
-    const tlFiltered = tlAll.filter(keepRow);
-    const rows = (tlFiltered || []).slice().reverse().slice(0, 60);
-    const html = `
-      <table>
-        <thead><tr>
-          <th>Date</th><th>Adversaire</th><th>Rés.</th><th>Pts FFTT</th><th>Perf</th><th>Contre</th><th>Serré</th>
-        </tr></thead>
-        <tbody>
-          ${rows.map(r=>{
-            const res = r.win ? 'V' : 'D';
-            const ptsm = (r.pointres==null? '' : fmtNum(r.pointres));
-            return `<tr>
-              <td>${esc((r.date||'').slice(0,10))}</td>
-              <td>${esc(r.opp_name||'')}</td>
-              <td><b>${esc(res)}</b></td>
-              <td>${esc(ptsm)}</td>
-              <td>${r.perf? '✅':''}</td>
-              <td>${r.contre? '⚠️':''}</td>
-              <td>${r.close_match? '✓':''}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>`;
-    $sheetMatchList.innerHTML = html;
+      // Segment starts (first pts_start of each segment)
+      const segMap = new Map();
+      for(const r of tl){
+        const sid = (r.segment_id==null ? null : Number(r.segment_id));
+        const key = (sid!=null && isFinite(sid)) ? ('s'+sid) : ('n'+(r.segment_nom||''));
+        const ps = (r.pts_start==null ? null : Number(r.pts_start));
+        if(!segMap.has(key) && ps!=null && isFinite(ps)){
+          let lab = '';
+          if(sid!=null && isFinite(sid)){
+            if(phaseSel==='2') lab = 'S' + Math.max(1, sid-4);
+            else lab = 'S' + sid;
+          }else{
+            lab = cleanXLabel(r.segment_nom||'');
+          }
+          segMap.set(key, {sid: sid, label: lab, v: ps});
+        }
+      }
+      const segs = [...segMap.values()].sort((a,b)=> ((a.sid??999)-(b.sid??999)));
+
+      // Fin: last pts_start in the selection
+      let fin = null;
+      for(let i=tl.length-1;i>=0;i--){
+        const v = tl[i].pts_start;
+        if(v!=null && isFinite(v)){ fin = Number(v); break; }
+      }
+
+      const labels = segs.map(s=>s.label).concat(fin!=null ? ['Fin'] : []);
+      const vals = segs.map(s=>s.v).concat(fin!=null ? [fin] : []);
+      const series = [{label: p.name || lic, values: vals, color: COLOR_A}];
+
+      // Value labels: max/min + first/last
+      const nn = vals.length;
+      const keyIdxs = [];
+      const push=(i)=>{ if(i!=null && i>=0 && !keyIdxs.includes(i)) keyIdxs.push(i); };
+      const firstIdx = vals.findIndex(v=>v!=null && isFinite(v));
+      let lastIdx = -1;
+      for(let i=nn-1;i>=0;i--){ const v=vals[i]; if(v!=null && isFinite(v)){ lastIdx=i; break; } }
+      let minIdx=-1, maxIdx=-1, minV=Infinity, maxV=-Infinity;
+      for(let i=0;i<nn;i++){
+        const v=vals[i];
+        if(v==null || !isFinite(v)) continue;
+        if(v<minV){ minV=v; minIdx=i; }
+        if(v>maxV){ maxV=v; maxIdx=i; }
+      }
+      push(firstIdx); push(lastIdx); push(minIdx); push(maxIdx);
+
+      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs});
+
+      // details table (match by match)
+      const rows = (tl || []).slice().reverse().slice(0, 60);
+      const html = `
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Adversaire</th><th>Rés.</th><th>Pts FFTT</th><th>Perf</th><th>Contre</th><th>Serré</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r=>{
+              const res = r.win ? 'V' : 'D';
+              const ptsm = (r.pointres==null? '' : fmtNum(r.pointres));
+              return `<tr>
+                <td>${esc((r.date||'').slice(0,10))}</td>
+                <td>${esc(r.opp_name||'')}</td>
+                <td><b>${esc(res)}</b></td>
+                <td>${esc(ptsm)}</td>
+                <td>${r.perf? '✅':''}</td>
+                <td>${r.contre? '⚠️':''}</td>
+                <td>${r.close_match? '✓':''}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+      $sheetMatchList.innerHTML = html;
+    });
   }
 
   function closeSheet(){
@@ -468,33 +527,6 @@
   let PLAYER_INDEX = {}; // lic -> {name,matches}
   let PLAYERS = {};      // lic -> full data (loaded on demand)
   let CLUB = null;
-
-  // --- Player photos (images_joueurs/<lic>.<ext>) ---
-  const PHOTO_CACHE = new Map();
-  function _loadImg(url){
-    return new Promise((resolve, reject)=>{
-      const img = new Image();
-      img.onload = ()=>resolve(img);
-      img.onerror = ()=>reject(new Error('img load failed'));
-      img.src = url;
-    });
-  }
-  async function getPhoto(lic){
-    lic = String(lic||'').trim();
-    if(!lic) return null;
-    if(PHOTO_CACHE.has(lic)) return PHOTO_CACHE.get(lic);
-    const exts = ['webp','png','jpg','jpeg'];
-    for(const ext of exts){
-      const url = new URL(`images_joueurs/${lic}.${ext}`, document.baseURI).toString();
-      try{
-        const img = await _loadImg(url);
-        PHOTO_CACHE.set(lic, img);
-        return img;
-      }catch(e){ /* try next */ }
-    }
-    PHOTO_CACHE.set(lic, null);
-    return null;
-  }
 
   async function fetchManifest(){
     const candidates = [
@@ -687,7 +719,7 @@
 
   function fmtNum(v){
     if(v==null || !isFinite(v)) return '';
-    // Counts (Matchs/Victoires/Défaites/Perfs/Contres) doivent rester des entiers.
+    // keep integers as integers (counts: matchs, victoires, défaites, perfs, contres, ...)
     if(Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
     const av = Math.abs(v);
     if(av >= 100) return String(Math.round(v));
@@ -947,12 +979,6 @@
     const barW = Math.max(6, Math.floor((groupW-6)/k));
     const baseY = y(0);
 
-    // clip bars to plot area (avoid overflow)
-    const labelInfos = [];
-    ctxB.save();
-    ctxB.beginPath();
-    ctxB.rect(left, top, right-left, bottom-top);
-    ctxB.clip();
     for(let i=0;i<n;i++){
       const gx = x(i) - (groupW/2);
       for(let j=0;j<series.length;j++){
@@ -967,22 +993,15 @@
         const bh = Math.abs(baseY - yv);
         const by = v>=0 ? yv : baseY;
         ctxB.fillRect(bx, by, barW-2, Math.max(1,bh));
-        const colLbl = s.color ? s.color : `hsla(${hue}, 80%, 70%, 0.95)`;
+
+        // value label
+        ctxB.fillStyle = s.color ? s.color : `hsla(${hue}, 80%, 70%, 0.95)`;
+        ctxB.font='600 11px system-ui';
+        ctxB.textAlign = 'center';
         const cx = bx + (barW-2)/2;
-        labelInfos.push({col: colLbl, x: cx, y: (v>=0? by-4 : by+bh+12), txt: fmtNum(v)});
+        ctxB.fillText(fmtNum(v), cx, (v>=0? by-4 : by+bh+12));
       }
     }
-    ctxB.restore();
-
-    // value labels (not clipped)
-    ctxB.font='600 11px system-ui';
-    ctxB.textAlign='center';
-    ctxB.textBaseline='alphabetic';
-    for(const it of labelInfos){
-      ctxB.fillStyle = it.col;
-      ctxB.fillText(it.txt, it.x, it.y);
-    }
-    ctxB.textAlign='start';
 
     // Legend is now rendered in HTML below the canvas (better on mobile).
   }
@@ -1029,8 +1048,11 @@
 
 
   function drawChartOn(canvas, labels, series, opts){
-    opts = opts || {};
     const ctx2 = canvas.getContext('2d');
+    opts = opts || {};
+    const maxLabels = (opts.maxLabels==null) ? 3 : Number(opts.maxLabels);
+    const forceMinMax = !!opts.forceMinMax;
+    const keyIdxs = Array.isArray(opts.keyIdxs) ? opts.keyIdxs : null;
     const w=canvas.width, h=canvas.height;
     // clear
     ctx2.clearRect(0,0,w,h);
@@ -1087,14 +1109,17 @@
       if(lastIdx>=0){
         const idxs=[];
         const pushUniq=(i)=>{ if(i!=null && i>=0 && !idxs.includes(i)) idxs.push(i); };
-        pushUniq(firstIdx);
-        pushUniq(lastIdx);
-        pushUniq(maxIdx);
-        pushUniq(minIdx);
+        if(keyIdxs && keyIdxs.length){
+          for(const i of keyIdxs) pushUniq(i);
+        }else{
+          pushUniq(firstIdx);
+          pushUniq(lastIdx);
+          if(forceMinMax || n>=8){ pushUniq(maxIdx); pushUniq(minIdx); }
+        }
         ctx2.fillStyle = col;
         ctx2.font='600 11px system-ui';
-        const cap = (opts.maxLabels!=null) ? Number(opts.maxLabels) : (opts.keyLabels ? 4 : 3);
-        for(const i of idxs.slice(0, Math.max(1, cap))){
+        const cap = Math.max(1, isFinite(maxLabels) ? Math.floor(maxLabels) : 3);
+        for(const i of idxs.slice(0, cap)){
           const v=s.values[i];
           if(v==null || !isFinite(v)) continue;
           const xx=x(i), yy=y(v);
@@ -1144,11 +1169,6 @@
     const barW = Math.max(6, Math.floor((groupW-6)/k));
     const baseY = y(0);
 
-    const labelInfos = [];
-    ctx2.save();
-    ctx2.beginPath();
-    ctx2.rect(left, top, right-left, bottom-top);
-    ctx2.clip();
     for(let i=0;i<n;i++){
       const gx = x(i) - (groupW/2);
       for(let j=0;j<series.length;j++){
@@ -1163,22 +1183,16 @@
         const bh = Math.abs(baseY - yv);
         const by = v>=0 ? yv : baseY;
         ctx2.fillRect(bx, by, barW-2, Math.max(1,bh));
+        // value label (few only to avoid clutter)
         if(n<=10 || i===0 || i===n-1){
-          const cx = bx + (barW-2)/2;
-          labelInfos.push({col, x:cx, y:(v>=0? by-4 : by+bh+12), txt: fmtNum(v)});
+          ctx2.fillStyle = col;
+          ctx2.font='600 11px system-ui';
+          ctx2.textAlign = 'center';
+          const cxv = bx + (barW-2)/2;
+          ctx2.fillText(fmtNum(v), cxv, (v>=0? by-4 : by+bh+12));
         }
       }
     }
-    ctx2.restore();
-
-    ctx2.font='600 11px system-ui';
-    ctx2.textAlign='center';
-    ctx2.textBaseline='alphabetic';
-    for(const it of labelInfos){
-      ctx2.fillStyle = it.col;
-      ctx2.fillText(it.txt, it.x, it.y);
-    }
-    ctx2.textAlign='start';
   }
 
   function hashHue(s){
@@ -1187,7 +1201,7 @@
     return h % 360;
   }
 
-  // object-fit: cover with vertical bias (for portrait backgrounds)
+  // object-fit: cover with vertical bias, for on-canvas portraits
   function drawCoverBias(c, img, x, y, w, h, biasY){
     if(!img) return;
     const iw = img.width || 1, ih = img.height || 1;
@@ -1212,7 +1226,7 @@
     const R=Math.min(w,h)*0.38;
     ctx.clearRect(0,0,w,h);
 
-    // background portraits (desktop/tablet only for readability)
+    // Background portraits (desktop/tablet only). Mobile stays clean.
     const isMobile = w < 620;
     if(!isMobile && (bgA || bgB)){
       const gap = R * 0.95;
@@ -1220,8 +1234,7 @@
       const rightX = Math.min(w, Math.ceil(cx + gap));
       const rightW = Math.max(0, Math.floor(w - rightX));
       ctx.save();
-      // demandé: un peu moins transparent
-      ctx.globalAlpha = 0.22;
+      ctx.globalAlpha = 0.22; // slightly less transparent (requested)
       try{ ctx.filter = 'blur(2px) brightness(0.55)'; }catch(e){}
       if(bgA && leftW > 60)  drawCoverBias(ctx, bgA, 0, 0, leftW, h, 0.18);
       if(bgB && rightW > 60) drawCoverBias(ctx, bgB, rightX, 0, rightW, h, 0.18);
@@ -1277,99 +1290,107 @@
     // Legend moved to HTML below the canvas.
   }
 
-  function segmentLabels(scope, phase, lics){
-    lics = (lics && lics.length) ? lics : selected;
-    const lic = lics[0];
-    if(!lic) return [];
-    const tl = (PLAYERS[lic].timeline && PLAYERS[lic].timeline[scope]) || [];
-    const out=[];
-    const seen=new Set();
-    for(const r of tl){
-      if(!(phase==='all' || (''+r.phase)==phase)) continue;
-      const sid = (r.segment_id!=null ? String(r.segment_id) : '');
-      const key = (r.phase!=null ? ('p'+r.phase+'_s'+sid) : ('s'+sid)) + '|' + String(r.segment_nom||'');
-      if(seen.has(key)) continue;
-      seen.add(key);
-      out.push(String(r.segment_nom || ('S'+sid) || ''));
-    }
-    return out;
-  }
-
-  function seriesSegments(metric, scope, phase, lics){
-    lics = (lics && lics.length) ? lics : selected;
-    const labels = segmentLabels(scope, phase, lics);
-
+  function buildSegmentBuckets(lic, scope, phase){
+    const p = PLAYERS[lic];
+    const arr = (p && p.timeline && p.timeline[scope]) ? p.timeline[scope] : [];
     const ctxBetter = $ctxBetter && $ctxBetter.checked;
-    const ctxWorse = $ctxWorse && $ctxWorse.checked;
-    const ctxClose = $ctxClose && $ctxClose.checked;
+    const ctxWorse  = $ctxWorse && $ctxWorse.checked;
+    const ctxClose  = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
       if(!(phase==='all' || (''+x.phase)==phase)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
-        if(ctxWorse && !(d > 0)) return false;
+        if(ctxWorse  && !(d > 0)) return false;
       }
       if(ctxClose && !x.close_match) return false;
       return true;
     };
 
-    function metricFromAgg(a){
-      const m = a.matches || 0;
-      if(metric==='matches') return m;
-      if(metric==='wins') return a.wins || 0;
-      if(metric==='losses') return a.losses || 0;
-      if(metric==='perfs') return a.perfs || 0;
-      if(metric==='contres') return a.contres || 0;
-      if(metric==='win_rate') return m ? (a.wins/m) : null;
-      if(metric==='pointres_total') return a.pointres_total || 0;
-      if(metric==='pointres_mean') return m ? (a.pointres_total/m) : null;
-      if(metric==='opp_pts_mean') return m ? (a.opp_pts_sum/m) : null;
-      if(metric==='overperf') return (a.wins || 0) - (a.expected_wins || 0);
-      // fallback
-      return null;
+    const buckets = new Map(); // key -> agg
+    const keyOrder = [];
+    const labels = [];
+
+    for(const r of (arr||[])){
+      if(!keepRow(r)) continue;
+      const sid = (r.segment_id==null ? null : Number(r.segment_id));
+      const sn = (r.segment_nom||'');
+      const key = (sid!=null && isFinite(sid)) ? ('s'+sid) : ('n'+sn);
+      if(!buckets.has(key)){
+        buckets.set(key, {sid:sid, sn:sn, matches:0, wins:0, perfs:0, contres:0, pr_sum:0, opp_sum:0, opp_n:0, over_sum:0});
+        keyOrder.push(key);
+        labels.push(sn ? cleanXLabel(sn) : (sid!=null && isFinite(sid) ? ('S'+sid) : key));
+      }
+      const b = buckets.get(key);
+      b.matches += 1;
+      const win = r.win ? 1 : 0;
+      b.wins += win;
+      b.perfs += (r.perf ? 1 : 0);
+      b.contres += (r.contre ? 1 : 0);
+      b.pr_sum += Number(r.pointres||0);
+      if(r.opp_pts_start!=null && isFinite(Number(r.opp_pts_start))){ b.opp_sum += Number(r.opp_pts_start); b.opp_n += 1; }
+      const ep = (r.expected_p==null ? 0.5 : Number(r.expected_p));
+      b.over_sum += (win - (isFinite(ep)? ep : 0.5));
     }
 
+    // finalize values
+    const out = new Map();
+    for(const key of keyOrder){
+      const b = buckets.get(key);
+      const m = b.matches || 0;
+      const wins = b.wins || 0;
+      const losses = m - wins;
+      const win_rate = m ? (wins / m) : null;
+      const pointres_total = b.pr_sum;
+      const pointres_mean = m ? (b.pr_sum / m) : null;
+      const opp_pts_mean = b.opp_n ? (b.opp_sum / b.opp_n) : null;
+      const overperf = b.over_sum;
+      out.set(key, {
+        matches: m,
+        wins: wins,
+        losses: losses,
+        win_rate: win_rate,
+        perfs: b.perfs,
+        contres: b.contres,
+        pointres_total: pointres_total,
+        pointres_mean: pointres_mean,
+        opp_pts_mean: opp_pts_mean,
+        overperf: overperf,
+      });
+    }
+    return {keyOrder, labels, buckets: out};
+  }
+
+  function segmentLabels(scope, phase, lics){
+    lics = (lics && lics.length) ? lics : selected;
+    const lic = lics[0];
+    if(!lic || !PLAYERS[lic]) return [];
+    return buildSegmentBuckets(lic, scope, phase).labels;
+  }
+
+  function seriesSegments(metric, scope, phase, lics){
+    lics = (lics && lics.length) ? lics : selected;
+    const lic0 = lics[0];
+    if(!lic0 || !PLAYERS[lic0]) return {labels:[], series:[]};
+    const base = buildSegmentBuckets(lic0, scope, phase);
+    const labels = base.labels;
+    const keyOrder = base.keyOrder;
     const out=[];
     for(const lic of lics){
       const p = PLAYERS[lic];
-      const tl = ((p.timeline && p.timeline[scope]) || []).filter(keepRow);
-      const agg = new Map();
-      for(const r of tl){
-        const sid = (r.segment_id!=null ? String(r.segment_id) : '');
-        const key = (r.phase!=null ? ('p'+r.phase+'_s'+sid) : ('s'+sid)) + '|' + String(r.segment_nom||'');
-        if(!agg.has(key)){
-          agg.set(key, {matches:0,wins:0,losses:0,perfs:0,contres:0,pointres_total:0,opp_pts_sum:0,expected_wins:0});
-        }
-        const a = agg.get(key);
-        a.matches += 1;
-        const w = r.win ? 1 : 0;
-        a.wins += w;
-        a.losses += (w?0:1);
-        a.perfs += (r.perf?1:0);
-        a.contres += (r.contre?1:0);
-        a.pointres_total += Number(r.pointres||0);
-        a.opp_pts_sum += Number(r.opp_pts_start||0);
-        a.expected_wins += Number(r.expected_p||0);
-      }
-      // align to labels
-      const vals = [];
-      // labels are segment_nom strings; use first occurrence order from segmentLabels
-      // We'll match by segment_nom (last part of key)
-      for(const lbl of labels){
-        let found = null;
-        for(const [k,a] of agg.entries()){
-          const segNom = k.split('|')[1] || '';
-          if(segNom === lbl){ found = a; break; }
-        }
-        vals.push(found ? metricFromAgg(found) : null);
-      }
+      const b = buildSegmentBuckets(lic, scope, phase);
+      const vals = keyOrder.map(k=>{
+        const o = b.buckets.get(k);
+        if(!o) return null;
+        const v = o[metric];
+        return (typeof v==='number') ? v : (v==null? null : Number(v));
+      });
       out.push({ label: p.name || lic, values: vals });
     }
-
-    // club overlay: incohérent avec filtres match-level => on le désactive si filtres actifs
-    if($club && $club.checked && !(($ctxBetter&&$ctxBetter.checked) || ($ctxWorse&&$ctxWorse.checked) || ($ctxClose&&$ctxClose.checked))){
-      const segs = (CLUB && CLUB.segments && CLUB.segments[scope]) || {};
+    // club overlay (uses precomputed club segments; not filter-aware)
+    if($club.checked && CLUB && CLUB.segments){
+      const segs = (CLUB.segments && CLUB.segments[scope]) || {};
       const entries = Object.entries(segs).map(([k,v])=>({k,v}));
       entries.sort((a,b)=> (a.v.phase||0)-(b.v.phase||0) || (a.v.segment_id||0)-(b.v.segment_id||0));
       const filtered = entries.filter(e => phase==='all' || (''+e.v.phase)==phase);
@@ -1430,8 +1451,7 @@
     if(!MANIFEST){ return; }
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
-    const aLic = selected[0] || '';
-    const bLic = ($compare && $compare.value) ? $compare.value : '';
+    const bLic = ($compare && $compare.value) ? ($compare.value || '') : '';
     if(bLic) await ensurePlayer(bLic);
     if($club && $club.checked) await ensureClub();
     syncCanvasSize();
@@ -1456,6 +1476,7 @@
     $exportBtn.disabled = false;
 
     // Comparison rules: if compare selected, we enforce A vs B on line modes too
+    const aLic = selected[0] || '';
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if(isLineMode && hasB){
       $club.checked = false;
@@ -1484,11 +1505,11 @@
       }
       setTitleText(`Kiviat profil — ${phaseLbl}`);
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
-      // background portraits (optional)
-      let bgA = null; let bgB = null;
-      try{ bgA = await getPhoto(aLic); }catch(e){}
+      // subtle portraits in the background (desktop/tablet only)
+      let bgA = null, bgB = null;
+      try{ bgA = await getPhotoImg(aLic); }catch(e){}
       if(hasB){
-        try{ bgB = await getPhoto(bLic); }catch(e){}
+        try{ bgB = await getPhotoImg(bLic); }catch(e){}
       }
       drawRadar(aSeries, bSeries, axes, bgA, bgB);
       $info.textContent = 'Kiviat: A vs ' + (bSeries? bSeries.label : '—');

@@ -90,6 +90,11 @@
       #gRow3 .g-btn{ flex:1 1 48%; }
     }
 
+    @media (max-width: 560px){
+      .g-card.g-focus .g-canvas{ height:52vh; }
+      .g-card.g-focus .g-legend{ padding-bottom:12px; }
+    }
+
     /* Focus mode (mobile-first fullscreen) */
     .g-card.g-focus{ position:fixed; inset:0; z-index:9999; margin:0; border-radius:0; border:none; background:#0b1220; }
     .g-card.g-focus .g-row{ padding:4px 10px; }
@@ -131,7 +136,7 @@
       .g-sheet .sh-photo{ width:84px; height:112px; }
     }
   `;
-
+  
 root.appendChild(style);
 
   // Player photos (offline): images_joueurs/<licence>.(webp|jpg|jpeg|png)
@@ -1372,7 +1377,9 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     ctx.clearRect(0,0,w,h);
 
     // Background portraits (desktop/tablet only). Keep mobile ultra-readable.
-    const isMobile = w < 620;
+    const dpr = (typeof window!=='undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    const cssW = w / dpr;
+    const isMobile = cssW < 620;
     if(!isMobile && (bgA || bgB)){
       const gap = R * 0.95;
       const leftW  = Math.max(0, Math.floor(cx - gap));
@@ -1593,7 +1600,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   // Heatmap removed.
 
-
+  
   function updateFocusHeader(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }

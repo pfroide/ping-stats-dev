@@ -23,7 +23,7 @@
     .g-btn{ padding:10px 12px; border-radius:12px; border:1px solid #263043; background:rgba(255,255,255,0.06); color:#e6e9ef; cursor:pointer; font-weight:700; }
     .g-pill{ display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); cursor:pointer; }
     .g-pill small{ color:#9aa4b2; font-weight:600; }
-    .g-pills{ display:flex; gap:6px; flex-wrap:wrap; }
+    .g-pills{ display:none; }
     .g-suggest{ border:1px solid #263043; border-radius:12px; overflow:hidden; background:rgba(18,24,38,0.96); }
     .g-suggest button{ all:unset; display:block; width:100%; padding:10px 12px; cursor:pointer; }
     .g-suggest button:hover{ background:rgba(255,255,255,0.06); }

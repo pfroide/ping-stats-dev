@@ -734,6 +734,8 @@ root.appendChild(style);
 
   $clearPlayers.addEventListener('click', ()=>{
     selected = [];
+    try{ if($player) $player.value = ''; }catch(e){}
+    try{ if($compare) $compare.value = ''; }catch(e){}
     renderPills();
     render({reset:true});
   });
@@ -756,35 +758,29 @@ root.appendChild(style);
   });
 
   async function addPlayer(lic){
+    // No multi-selection: Joueur A is the only primary selection.
     if(!lic || !PLAYER_INDEX[lic]) return;
-    await ensurePlayer(lic);
-    if(selected.includes(lic)) return;
-    // radar: keep A single for readability; allow compare via select
-    if($mode.value==='radar') selected = [];
-    selected.push(lic);
-    if(selected.length>5) selected = selected.slice(-5);
+    selected = [lic];
+    // keep UI in sync if select exists
+    try{ if($player) $player.value = lic; }catch(e){}
     renderPills();
-    await render();
+    render({reset:true});
   }
 
   function removePlayer(lic){
-    selected = selected.filter(x=>x!==lic);
+    // No multi-selection: removing clears Joueur A.
+    selected = [];
+    try{ if($player) $player.value = ''; }catch(e){}
     renderPills();
-    render();
+    render({reset:true});
   }
 
   function renderPills(){
-    $pills.innerHTML = selected.map(lic => {
-      const name = (PLAYERS[lic] && PLAYERS[lic].name) ? PLAYERS[lic].name : ((PLAYER_INDEX[lic] && PLAYER_INDEX[lic].name) ? PLAYER_INDEX[lic].name : lic);
-      return `<span class="g-pill" data-lic="${esc(lic)}">${esc(name)} <small>×</small></span>`;
-    }).join('');
+    // Pills UI removed (no multi-selection)
+    try{ if($pills) $pills.innerHTML = ''; }catch(e){}
   }
 
-  $pills.addEventListener('click', (e)=>{
-    const p = e.target.closest('.g-pill[data-lic]');
-    if(!p) return;
-    removePlayer(p.getAttribute('data-lic'));
-  });
+  $pills.addEventListener('click', (e)=>{ /* pills disabled */ });
 
   function clearCanvas(){
     ctx.clearRect(0,0,(_cw||1),(_ch||1));
@@ -1652,9 +1648,12 @@ async function render(opts){
     if(!MANIFEST){ return; }
     // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
     try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
+    // derive A/B selection (no multi-selection)
+    const aLic = ($player && $player.value) ? $player.value : (selected[0] || '');
+    selected = aLic ? [aLic] : [];
+
     // ensure required data is loaded
-    for(const lic of (selected||[])) await ensurePlayer(lic);
-    const aLic = selected[0] || '';
+    if(aLic) await ensurePlayer(aLic);
     if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
     const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);

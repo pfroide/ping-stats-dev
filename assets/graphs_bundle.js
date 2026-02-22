@@ -1998,10 +1998,7 @@ async function render(){
   if($delta) $delta.addEventListener('change', render);
   $compare.addEventListener('change', ()=>{
     // keep A as first selected; if none, auto select first player in data
-    if($compare.value && selected.length===0){
-      const first = Object.keys(PLAYER_INDEX||{})[0];
-      if(first) addPlayer(first);
-    }
+    // no auto-select player
     render();
   });
   if($club) $club.addEventListener('change', render);
@@ -2261,9 +2258,8 @@ async function render(){
 
   setMetricOptions();
   load().then(()=>{
-    // preselect first player if exists
-    const first = Object.keys(PLAYER_INDEX||{})[0];
-    if(first) addPlayer(first);
+    // no auto-select player
+    render();
   });
   } catch (e) {
     fallback.style.display = 'block';

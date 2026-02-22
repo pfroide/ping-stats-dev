@@ -1679,7 +1679,9 @@ async function render(){
       const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
       const phaseLbl = ($phase.value==='all') ? 'Toutes phases' : ('Phase ' + $phase.value);
       const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
-      const a = (PLAYERS[aLic].radar && PLAYERS[aLic].radar[phaseKey] && PLAYERS[aLic].radar[phaseKey].norm) || null;
+      const aRadar = (PLAYERS[aLic] && PLAYERS[aLic].radar) ? PLAYERS[aLic].radar : null;
+      const a = (aRadar && aRadar[phaseKey] && aRadar[phaseKey].norm) ? aRadar[phaseKey].norm : null;
+      if(!a){ clearCanvas(); $info.textContent = `Pas de données ${phaseLbl} pour ${((PLAYERS[aLic] && (PLAYERS[aLic].name||aLic))||aLic)}`; return; }
 
       let b = null;
       if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;

@@ -410,6 +410,26 @@ root.appendChild(style);
     canvas.__cw = w; canvas.__ch = h; canvas.__dpr = dpr;
     return {ctx:c, w:w, h:h, dpr:dpr};
   }
+  // Reset canvas context state to a known baseline (prevents color/alpha/filter leakage between renders)
+  function resetCtx(c, dpr){
+    if(!c) return;
+    const s = (dpr && isFinite(dpr) && dpr>0) ? dpr : (window.devicePixelRatio || 1);
+    try{ c.setTransform(s,0,0,s,0,0); }catch(e){}
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = 'source-over';
+    c.filter = 'none';
+    c.shadowBlur = 0;
+    c.shadowColor = 'transparent';
+    c.shadowOffsetX = 0;
+    c.shadowOffsetY = 0;
+    c.lineWidth = 1;
+    c.lineCap = 'butt';
+    c.lineJoin = 'miter';
+    c.textAlign = 'left';
+    c.textBaseline = 'alphabetic';
+  }
+
+
 
   let _cw = 0, _ch = 0, _dpr = 1;
 
@@ -783,6 +803,7 @@ root.appendChild(style);
   $pills.addEventListener('click', (e)=>{ /* pills disabled */ });
 
   function clearCanvas(){
+    resetCtx(ctx, _dpr);
     ctx.clearRect(0,0,(_cw||1),(_ch||1));
     ctx.fillStyle = 'rgba(0,0,0,0)';
   }
@@ -907,6 +928,8 @@ root.appendChild(style);
   }
 
   function drawAxesBase(ctxX, w, h){
+    ctx.save();
+    try{
     ctxX.strokeStyle = 'rgba(154,164,178,0.25)';
     ctxX.lineWidth = 1;
     ctxX.beginPath();
@@ -914,9 +937,13 @@ root.appendChild(style);
     ctxX.lineTo(w-12,h-38);
     ctxX.stroke();
     // title moved to HTML (better on mobile)
-  }
+  
+    } finally { ctx.restore(); }
+}
 
   function drawYAxis(ctxX, left, top, bottom, right, ymin, ymax){
+    ctx.save();
+    try{
     const ticks = 4;
     ctxX.font='12px system-ui';
     ctxX.fillStyle='rgba(154,164,178,0.9)';
@@ -934,12 +961,18 @@ root.appendChild(style);
       // label
       ctxX.fillText(fmtNum(v), 6, yy+4);
     }
-  }
+  
+    } finally { ctx.restore(); }
+}
 
   function drawAxes(){
+    ctx.save();
+    try{
     const w=_cw, h=_ch;
     drawAxesBase(ctx, w, h);
-  }
+  
+    } finally { ctx.restore(); }
+}
 
   function drawLine(labels, series){
     const w=_cw, h=_ch;
@@ -1041,6 +1074,8 @@ root.appendChild(style);
   }
 
   function drawBar(labels, series){
+    ctx.save();
+    try{
     const w=_cw, h=_ch;
     const ctxB=$canvas.getContext('2d');
     ctxB.clearRect(0,0,w,h);
@@ -1124,7 +1159,9 @@ root.appendChild(style);
     }
 
     // Legend is now rendered in HTML below the canvas (better on mobile).
-  }
+  
+    } finally { ctx.restore(); }
+}
 
   // Small, mobile-friendly transition when changing metric/scope/phase (overlay view)
   let __animToken = 0;
@@ -1168,6 +1205,8 @@ root.appendChild(style);
 
 
   function drawChartOn(canvas, labels, series, opts){
+    ctx.save();
+    try{
     const f = fitCanvas(canvas, 160, 120);
     const ctx2 = f.ctx;
     const w = f.w, h = f.h;
@@ -1280,9 +1319,13 @@ root.appendChild(style);
         ctx2.fillText(fmtNum(v), tx, ty);
       }
     }
-  }
+  
+    } finally { ctx.restore(); }
+}
 
   function drawBarOn(canvas, labels, series){
+    ctx.save();
+    try{
     const f = fitCanvas(canvas, 160, 120);
     const ctx2 = f.ctx;
     const w = f.w, h = f.h;
@@ -1358,7 +1401,9 @@ root.appendChild(style);
         }
       }
     }
-  }
+  
+    } finally { ctx.restore(); }
+}
 
 
 
@@ -1659,6 +1704,9 @@ async function render(opts){
     if(bLic) await ensurePlayer(bLic);
     updateFocusHeader(aLic, bLic);
     syncCanvasSize();
+    // Hard reset to avoid state leakage (colors/alpha/filter) across UI mode changes (Focus/Fiche)
+    resetCtx(ctx, _dpr);
+    ctx.clearRect(0,0,(_cw||1),(_ch||1));
     // Small fade to make transitions less harsh on mobile
     try{
       $canvas.style.transition = 'opacity 180ms ease';
@@ -2001,12 +2049,12 @@ async function render(opts){
     document.documentElement.style.overflow = _isFocus ? 'hidden' : '';
     document.body.style.overflow = _isFocus ? 'hidden' : '';
   }
-  if($focus) $focus.addEventListener('click', ()=>{ setFocus(!_isFocus); render(); });
-  if($focusClose) $focusClose.addEventListener('click', ()=>{ setFocus(false); render(); });
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus){ setFocus(false); render(); } });
+  if($focus) $focus.addEventListener('click', ()=>{ setFocus(!_isFocus); render({reset:true}); });
+  if($focusClose) $focusClose.addEventListener('click', ()=>{ setFocus(false); render({reset:true}); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus){ setFocus(false); render({reset:true}); } });
 
-  $metric.addEventListener('change', ()=>{ render(); hideTip(); });
-  $chartType.addEventListener('change', ()=>{ render(); hideTip(); });
+  $metric.addEventListener('change', ()=>{ render({reset:true}); hideTip(); });
+  $chartType.addEventListener('change', ()=>{ render({reset:true}); hideTip(); });
   $scope.addEventListener('change', render);
   $phase.addEventListener('change', render);
   $view.addEventListener('change', render);
@@ -2022,8 +2070,7 @@ async function render(opts){
   function ctxChanged(){
     // If both better+worse unchecked => include all.
     // If both checked => include all.
-    render();
-  }
+    render({reset:true}); }
   if($ctxBetter) $ctxBetter.addEventListener('change', ctxChanged);
   if($ctxWorse) $ctxWorse.addEventListener('change', ctxChanged);
   if($ctxClose) $ctxClose.addEventListener('change', ctxChanged);

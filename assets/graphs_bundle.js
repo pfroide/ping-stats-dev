@@ -1634,6 +1634,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
 async function render(){
     if(!MANIFEST){ return; }
+    // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
+    try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
     // ensure required data is loaded
     for(const lic of (selected||[])) await ensurePlayer(lic);
     const aLic = selected[0] || '';
@@ -1676,12 +1678,11 @@ async function render(){
 
     if(mode==='radar'){
       if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
-      const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
-      const phaseLbl = ($phase.value==='all') ? 'Toutes phases' : ('Phase ' + $phase.value);
+      const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
+      const phaseKey = (pv==='1' || pv==='p1') ? 'p1' : ((pv==='2' || pv==='p2') ? 'p2' : 'all');
+      const phaseLbl = (pv==='all') ? 'Toutes phases' : ('Phase ' + (pv==='p1'?'1':(pv==='p2'?'2':pv)));
       const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
-      const aRadar = (PLAYERS[aLic] && PLAYERS[aLic].radar) ? PLAYERS[aLic].radar : null;
-      const a = (aRadar && aRadar[phaseKey] && aRadar[phaseKey].norm) ? aRadar[phaseKey].norm : null;
-      if(!a){ clearCanvas(); $info.textContent = `Pas de données ${phaseLbl} pour ${((PLAYERS[aLic] && (PLAYERS[aLic].name||aLic))||aLic)}`; return; }
+      const a = (PLAYERS[aLic].radar && PLAYERS[aLic].radar[phaseKey] && PLAYERS[aLic].radar[phaseKey].norm) || null;
 
       let b = null;
       if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;
@@ -1888,7 +1889,8 @@ async function render(){
       if(!MANIFEST || !selected.length) return;
       const aLic = selected[0];
       const bLic = $compare.value || null;
-      const phaseKey = ($phase.value==='1') ? 'p1' : (($phase.value==='2') ? 'p2' : 'all');
+      const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
+      const phaseKey = (pv==='1' || pv==='p1') ? 'p1' : ((pv==='2' || pv==='p2') ? 'p2' : 'all');
       const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
       const Araw = (((PLAYERS[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
       const Braw = bLic ? ((((PLAYERS[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;

@@ -723,20 +723,19 @@ root.appendChild(style);
     if(!lic) return;
     if(!PLAYER_INDEX[lic]) return;
     await ensurePlayer(lic);
-    if($mode.value === 'radar'){
-      selected = [lic];
-    } else {
-      if(!selected.includes(lic)) selected.push(lic);
-      if(selected.length>5) selected = selected.slice(-5);
-    }
+
+    // Single-selection: changing Joueur A must immediately update the charts.
+    // Keep selection state minimal to avoid stale series / stale colors.
+    selected = [lic];
     renderPills();
-    await render();
+    await render({reset:true});
   });
+
 
   $clearPlayers.addEventListener('click', ()=>{
     selected = [];
     renderPills();
-    render();
+    render({reset:true});
   });
 
   // Player sheet (1 screen)
@@ -1178,6 +1177,21 @@ root.appendChild(style);
     const w = f.w, h = f.h;
     if(!ctx2) return;
     opts = opts || {};
+    // Safety: if no overlay is open, restore scrolling
+    if(!$focusHdr || $focusHdr.style.display === 'none'){
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    }
+    // Reset canvas to avoid overdraw/blur when switching modes/metrics
+    if(opts.reset){
+      const f = fitCanvas($canvas, 820, 440);
+      const c = $canvas.getContext('2d');
+      if(c){
+        c.setTransform(f.dpr,0,0,f.dpr,0,0);
+        c.clearRect(0,0,f.w,f.h);
+      }
+      if($legend) $legend.innerHTML = '';
+    }
     const maxLabels = (opts.maxLabels==null) ? 3 : Number(opts.maxLabels);
     const forceMinMax = !!opts.forceMinMax;
     const keyIdxs = Array.isArray(opts.keyIdxs) ? opts.keyIdxs : null;
@@ -1632,7 +1646,9 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusBgB) setImgWithFallback($focusBgB, bLic);
   }
 
-async function render(){
+async function render(opts){
+    opts = opts || {};
+
     if(!MANIFEST){ return; }
     // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
     try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
@@ -1877,7 +1893,7 @@ async function render(){
   // No search box: player selection is handled via dropdown.
   $mode.addEventListener('change', ()=>{
     if($mode.value==='radar' && selected.length>1) selected = selected.slice(0,1);
-    renderPills(); render();
+    renderPills(); render({reset:true});
   });
   function hideTip(){ if($tip) $tip.style.display='none'; }
 
@@ -1999,7 +2015,7 @@ async function render(){
   $compare.addEventListener('change', ()=>{
     // keep A as first selected; if none, auto select first player in data
     // no auto-select player
-    render();
+    render({reset:true});
   });
   if($club) $club.addEventListener('change', render);
 
@@ -2259,7 +2275,7 @@ async function render(){
   setMetricOptions();
   load().then(()=>{
     // no auto-select player
-    render();
+    render({reset:true});
   });
   } catch (e) {
     fallback.style.display = 'block';

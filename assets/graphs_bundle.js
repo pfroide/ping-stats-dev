@@ -39,11 +39,43 @@
     }catch(e){}
   };
 
+  // Cross-scope alias for safe callers
+  window.__pg_drawRadar = drawRadar;
+
   // Stub to prevent ReferenceError if render runs before assignment below
   var drawRadar = function(){ /* stub */ };
 
   // Stub to prevent ReferenceError in openSheetFor (sheet chart)
   var drawChartOn = function(){ /* stub */ };
+
+  // Cross-scope safe callers. In some bundling contexts, functions can end up
+  // defined in a different scope than the call site. We therefore:
+  //  - use typeof checks (safe on undeclared identifiers)
+  //  - fall back to window.__pg_* implementations
+  function callUpdateFocusHeader(aLic, bLic){
+    try{
+      if(typeof updateFocusHeader === 'function') return updateFocusHeader(aLic, bLic);
+    }catch(e){}
+    try{
+      if(typeof window.__pg_updateFocusHeader === 'function') return window.__pg_updateFocusHeader(aLic, bLic);
+    }catch(e){}
+  }
+  function callDrawRadar(){
+    try{
+      if(typeof drawRadar === 'function') return drawRadar.apply(null, arguments);
+    }catch(e){}
+    try{
+      if(typeof window.__pg_drawRadar === 'function') return window.__pg_drawRadar.apply(null, arguments);
+    }catch(e){}
+  }
+  function callDrawChartOn(){
+    try{
+      if(typeof drawChartOn === 'function') return drawChartOn.apply(null, arguments);
+    }catch(e){}
+    try{
+      if(typeof window.__pg_drawChartOn === 'function') return window.__pg_drawChartOn.apply(null, arguments);
+    }catch(e){}
+  }
 
   function normalizeLic(v){
     try{
@@ -74,7 +106,7 @@
       if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
       const bLic = normalizeLic(($compare && $compare.value) ? $compare.value : '');
       if(bLic) await ensurePlayer(bLic);
-      updateFocusHeader(aLic, bLic);
+      callUpdateFocusHeader(aLic, bLic);
       syncCanvasSize();
       // Hard reset to avoid state leakage (colors/alpha/filter) across UI mode changes (Focus/Fiche)
       resetCtx(ctx, _dpr);
@@ -140,7 +172,7 @@
   
         setTitleText(`Kiviat profil — ${phaseLbl}`);
         renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
-        drawRadar(aSeries, bSeries, axes, bgA, bgB);
+        callDrawRadar(aSeries, bSeries, axes, bgA, bgB);
         $info.textContent = 'Kiviat: ' + (aSeries.label||'A') + ' vs ' + (bSeries? bSeries.label : '—');
   
         // A/B synthesis cards under the kiviat (mobile-friendly)
@@ -680,7 +712,7 @@ root.appendChild(style);
       }
       push(firstIdx); push(lastIdx); push(minIdx); push(maxIdx);
 
-      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs});
+      callDrawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs});
 
       // details table (match by match)
       const rows = (tl || []).slice().reverse().slice(0, 60);
@@ -1651,6 +1683,9 @@ function renderLegend(series){
     } finally { ctx2.restore(); }
 }
 
+  // Cross-scope alias for safe callers
+  window.__pg_drawChartOn = drawChartOn;
+
   function drawBarOn(canvas, labels, series){
     const f = fitCanvas(canvas, 160, 120);
     const ctx2 = f.ctx;
@@ -2019,6 +2054,9 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusBgB) setImgWithFallback($focusBgB, bLic);
   }
 
+  // Cross-scope alias for safe callers
+  window.__pg_updateFocusHeader = window.__g_updateFocusHeader;
+
 /* render assigned earlier */
 
     // line modes: segments/timeline/expected
@@ -2142,7 +2180,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
           }
         }
         if(ctMulti==='bar') drawBarOn(cv, b2.labels, b2.series);
-        else drawChartOn(cv, b2.labels, b2.series);
+        else callDrawChartOn(cv, b2.labels, b2.series);
       }
       renderCompareCards(aLic, bLic, scope, phase);
       $info.textContent = `Mode ${mode} · vue mini-graphs · métrique ${metric} · joueurs ${toDraw.filter(Boolean).length}`;

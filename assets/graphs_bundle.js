@@ -472,14 +472,16 @@ root.appendChild(style);
   root.appendChild($pop);
 
   const el = (id) => root.getElementById(id);
-  const $player = el('gPlayer');
+  // Some pages host the controls outside the Shadow DOM (legacy / integration differences).
+  // We therefore look up the key selects in both places.
+  const $player = el('gPlayer') || document.getElementById('gPlayer') || document.getElementById('playerA');
   const $clearPlayers = el('gClearPlayers');
   const $mode = el('gMode');
   const $metric = el('gMetric');
   const $scope = el('gScope');
   const $chartType = el('gChartType');
   const $phase = el('gPhase');
-  const $compare = el('gCompare');
+  const $compare = el('gCompare') || document.getElementById('gCompare') || document.getElementById('playerB');
   const $view = el('gView');
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
@@ -844,8 +846,12 @@ root.appendChild(style);
   }
 
   function fillPlayers(){
+    if(!$player){
+      $info.textContent = "Erreur Graphiques: liste joueurs introuvable (select gPlayer/playerA absent)";
+      return;
+    }
     $player.innerHTML = '<option value="">Joueur…</option>';
-    $compare.innerHTML = '<option value="">Comparer: aucun</option>';
+    if($compare) $compare.innerHTML = '<option value="">Comparer: aucun</option>';
     const entries = Object.entries(PLAYER_INDEX).map(([lic,p]) => [lic, p.name || lic]);
     entries.sort((a,b)=> (a[1]||'').localeCompare(b[1]||'', 'fr', {sensitivity:'base'}));
     for (const [lic,name] of entries){
@@ -854,10 +860,12 @@ root.appendChild(style);
       o.textContent = `${name} (lic ${lic})`;
       $player.appendChild(o);
 
-      const c=document.createElement('option');
-      c.value=lic;
-      c.textContent = `${name}`;
-      $compare.appendChild(c);
+      if($compare){
+        const c=document.createElement('option');
+        c.value=lic;
+        c.textContent = `${name}`;
+        $compare.appendChild(c);
+      }
     }
     $info.textContent = 'Données chargées: ' + entries.length + ' joueurs';
   }
@@ -880,7 +888,7 @@ root.appendChild(style);
   }
 
   // dropdown selection
-  $player.addEventListener('change', async ()=>{
+  if($player) $player.addEventListener('change', async ()=>{
     const lic = normalizeLic($player.value);
     if(!lic) return;
     if(!PLAYER_INDEX[lic]) return;

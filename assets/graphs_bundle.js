@@ -7,6 +7,13 @@
   host.appendChild(fallback);
   try {
 
+  // IMPORTANT:
+  // "render" is referenced by many event handlers. In some browsers/bundling contexts,
+  // function declarations can end up out-of-scope if the code is wrapped/moved.
+  // We define a function-scoped variable and assign the renderer later to guarantee
+  // the identifier exists.
+  var render;
+
   // Shadow DOM to prevent CSS regressions
   const root = host.attachShadow({ mode: 'open' });
 
@@ -1863,7 +1870,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusBgB) setImgWithFallback($focusBgB, bLic);
   }
 
-async function render(opts){
+render = async function(opts){
     opts = opts || {};
 
     if(!MANIFEST){ return; }

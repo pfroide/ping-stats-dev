@@ -42,6 +42,9 @@
   // Stub to prevent ReferenceError if render runs before assignment below
   var drawRadar = function(){ /* stub */ };
 
+  // Stub to prevent ReferenceError in openSheetFor (sheet chart)
+  var drawChartOn = function(){ /* stub */ };
+
   function normalizeLic(v){
     try{
       const s = (v==null ? '' : String(v)).trim();
@@ -1524,7 +1527,7 @@ function renderLegend(series){
   }
 
 
-  function drawChartOn(canvas, labels, series, opts){
+  drawChartOn = function(canvas, labels, series, opts){
     const f = fitCanvas(canvas, 160, 120);
     const ctx2 = f.ctx;
     const w = f.w, h = f.h;

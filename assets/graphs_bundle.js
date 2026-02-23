@@ -14,6 +14,99 @@
   // the identifier exists.
   var render;
 
+  render = async function(opts){
+      opts = opts || {};
+  
+      if(!MANIFEST){ return; }
+      // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
+      try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
+      // derive A/B selection (no multi-selection)
+      const aLic = ($player && $player.value) ? $player.value : (selected[0] || '');
+      selected = aLic ? [aLic] : [];
+  
+      // ensure required data is loaded
+      if(aLic) await ensurePlayer(aLic);
+      if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
+      const bLic = ($compare && $compare.value) ? $compare.value : '';
+      if(bLic) await ensurePlayer(bLic);
+      updateFocusHeader(aLic, bLic);
+      syncCanvasSize();
+      // Hard reset to avoid state leakage (colors/alpha/filter) across UI mode changes (Focus/Fiche)
+      resetCtx(ctx, _dpr);
+      ctx.clearRect(0,0,(_cw||1),(_ch||1));
+      // Small fade to make transitions less harsh on mobile
+      try{
+        $canvas.style.transition = 'opacity 180ms ease';
+        $canvas.style.opacity = '0.25';
+      }catch(e){}
+      const mode = $mode.value;
+      setMetricOptions();
+  
+      // default visibility
+      $multi.style.display = 'none';
+      $canvas.style.display = 'block';
+      if($legend) $legend.innerHTML = '';
+      if($compareCards){ $compareCards.style.display = 'none'; $compareCards.innerHTML = ''; }
+  
+      // view controls enabled only on line modes
+      const isLineMode = (mode==='segments' || mode==='timeline' || mode==='expected');
+      $view.disabled = !isLineMode;
+      if($delta) $delta.disabled = !isLineMode;
+      $exportBtn.disabled = false;
+  
+      // Comparison rules: if compare selected, we enforce A vs B on line modes too
+      const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
+      if($club){
+      if(isLineMode && hasB){
+        if($club) $club.checked = false;
+        $club.disabled = true;
+      }else{
+        $club.disabled = false;
+      }
+    }
+  
+  
+      if(mode==='radar'){
+        if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
+        const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
+        const phaseKey = (pv==='1' || pv==='p1') ? 'p1' : ((pv==='2' || pv==='p2') ? 'p2' : 'all');
+        const phaseLbl = (pv==='all') ? 'Toutes phases' : ('Phase ' + (pv==='p1'?'1':(pv==='p2'?'2':pv)));
+        const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
+        const a = (PLAYERS[aLic].radar && PLAYERS[aLic].radar[phaseKey] && PLAYERS[aLic].radar[phaseKey].norm) || null;
+  
+        let b = null;
+        if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;
+        const club = (($club && ($club && ($club && $club.checked))) && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
+  
+        const aSeries = { label: ((PLAYERS[aLic] && (PLAYERS[aLic].name||aLic)) || aLic), values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
+        let bSeries = null;
+        if(b){
+          bSeries = { label: PLAYERS[bLic].name || bLic, values: axes.map(ax => (b && b[ax.key]) ?? 0), color: COLOR_B };
+        }else if(club){
+          bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0), color: COLOR_CLUB };
+        }
+  
+        // Kiviat background portraits (subtle). Mobile keeps it clean.
+        let bgA = null, bgB = null;
+        try{ const pa = await getPhoto(aLic); bgA = pa && pa.img ? pa.img : null; }catch(e){}
+        if(hasB){
+          try{ const pb = await getPhoto(bLic); bgB = pb && pb.img ? pb.img : null; }catch(e){}
+        }
+  
+        setTitleText(`Kiviat profil — ${phaseLbl}`);
+        renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
+        drawRadar(aSeries, bSeries, axes, bgA, bgB);
+        $info.textContent = 'Kiviat: ' + (aSeries.label||'A') + ' vs ' + (bSeries? bSeries.label : '—');
+  
+        // A/B synthesis cards under the kiviat (mobile-friendly)
+        renderCompareCards(aLic, bLic, ($scope && $scope.value) ? $scope.value : 'tous', ($phase && $phase.value) ? $phase.value : 'all');
+        }
+        requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
+        return;
+      }
+
+
+
   // Shadow DOM to prevent CSS regressions
   const root = host.attachShadow({ mode: 'open' });
 
@@ -1870,96 +1963,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusBgB) setImgWithFallback($focusBgB, bLic);
   }
 
-render = async function(opts){
-    opts = opts || {};
-
-    if(!MANIFEST){ return; }
-    // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
-    try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
-    // derive A/B selection (no multi-selection)
-    const aLic = ($player && $player.value) ? $player.value : (selected[0] || '');
-    selected = aLic ? [aLic] : [];
-
-    // ensure required data is loaded
-    if(aLic) await ensurePlayer(aLic);
-    if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
-    const bLic = ($compare && $compare.value) ? $compare.value : '';
-    if(bLic) await ensurePlayer(bLic);
-    updateFocusHeader(aLic, bLic);
-    syncCanvasSize();
-    // Hard reset to avoid state leakage (colors/alpha/filter) across UI mode changes (Focus/Fiche)
-    resetCtx(ctx, _dpr);
-    ctx.clearRect(0,0,(_cw||1),(_ch||1));
-    // Small fade to make transitions less harsh on mobile
-    try{
-      $canvas.style.transition = 'opacity 180ms ease';
-      $canvas.style.opacity = '0.25';
-    }catch(e){}
-    const mode = $mode.value;
-    setMetricOptions();
-
-    // default visibility
-    $multi.style.display = 'none';
-    $canvas.style.display = 'block';
-    if($legend) $legend.innerHTML = '';
-    if($compareCards){ $compareCards.style.display = 'none'; $compareCards.innerHTML = ''; }
-
-    // view controls enabled only on line modes
-    const isLineMode = (mode==='segments' || mode==='timeline' || mode==='expected');
-    $view.disabled = !isLineMode;
-    if($delta) $delta.disabled = !isLineMode;
-    $exportBtn.disabled = false;
-
-    // Comparison rules: if compare selected, we enforce A vs B on line modes too
-    const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
-    if($club){
-    if(isLineMode && hasB){
-      if($club) $club.checked = false;
-      $club.disabled = true;
-    }else{
-      $club.disabled = false;
-    }
-  }
-
-
-    if(mode==='radar'){
-      if(!aLic){ clearCanvas(); $info.textContent='Sélectionne un joueur (A)'; return; }
-      const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
-      const phaseKey = (pv==='1' || pv==='p1') ? 'p1' : ((pv==='2' || pv==='p2') ? 'p2' : 'all');
-      const phaseLbl = (pv==='all') ? 'Toutes phases' : ('Phase ' + (pv==='p1'?'1':(pv==='p2'?'2':pv)));
-      const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
-      const a = (PLAYERS[aLic].radar && PLAYERS[aLic].radar[phaseKey] && PLAYERS[aLic].radar[phaseKey].norm) || null;
-
-      let b = null;
-      if(hasB) b = (PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm) || null;
-      const club = (($club && ($club && ($club && $club.checked))) && CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm) ? CLUB.radar[phaseKey].norm : null;
-
-      const aSeries = { label: ((PLAYERS[aLic] && (PLAYERS[aLic].name||aLic)) || aLic), values: axes.map(ax => (a && a[ax.key]) ?? 0), color: COLOR_A };
-      let bSeries = null;
-      if(b){
-        bSeries = { label: PLAYERS[bLic].name || bLic, values: axes.map(ax => (b && b[ax.key]) ?? 0), color: COLOR_B };
-      }else if(club){
-        bSeries = { label: 'Club', values: axes.map(ax => (club && club[ax.key]) ?? 0), color: COLOR_CLUB };
-      }
-
-      // Kiviat background portraits (subtle). Mobile keeps it clean.
-      let bgA = null, bgB = null;
-      try{ const pa = await getPhoto(aLic); bgA = pa && pa.img ? pa.img : null; }catch(e){}
-      if(hasB){
-        try{ const pb = await getPhoto(bLic); bgB = pb && pb.img ? pb.img : null; }catch(e){}
-      }
-
-      setTitleText(`Kiviat profil — ${phaseLbl}`);
-      renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
-      drawRadar(aSeries, bSeries, axes, bgA, bgB);
-      $info.textContent = 'Kiviat: ' + (aSeries.label||'A') + ' vs ' + (bSeries? bSeries.label : '—');
-
-      // A/B synthesis cards under the kiviat (mobile-friendly)
-      renderCompareCards(aLic, bLic, ($scope && $scope.value) ? $scope.value : 'tous', ($phase && $phase.value) ? $phase.value : 'all');
-      }
-      requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
-      return;
-    }
+/* render assigned earlier */
 
     // line modes: segments/timeline/expected
     const metric = $metric.value;

@@ -7,6 +7,21 @@
   host.appendChild(fallback);
   try {
 
+  // Surface async errors in the UI (otherwise things can "silently" stop working).
+  window.addEventListener('error', (ev) => {
+    try{
+      fallback.style.display = 'block';
+      fallback.textContent = 'Erreur Graphiques: ' + (ev && ev.message ? ev.message : String(ev));
+    }catch(e){}
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    try{
+      const reason = (ev && ev.reason) ? (ev.reason.message || String(ev.reason)) : 'Promise rejection';
+      fallback.style.display = 'block';
+      fallback.textContent = 'Erreur Graphiques (promise): ' + reason;
+    }catch(e){}
+  });
+
   // IMPORTANT:
   // "render" is referenced by many event handlers. In some browsers/bundling contexts,
   // function declarations can end up out-of-scope if the code is wrapped/moved.
@@ -27,6 +42,18 @@
   // Stub to prevent ReferenceError if render runs before assignment below
   var drawRadar = function(){ /* stub */ };
 
+  function normalizeLic(v){
+    try{
+      const s = (v==null ? '' : String(v)).trim();
+      if(!s) return '';
+      if(/^\d+$/.test(s)) return s;
+      const m = s.match(/(\d{4,})/);
+      return m ? m[1] : s;
+    }catch(e){
+      return '';
+    }
+  }
+
 
 
   render = async function(opts){
@@ -36,13 +63,13 @@
       // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
       try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
       // derive A/B selection (no multi-selection)
-      const aLic = ($player && $player.value) ? $player.value : (selected[0] || '');
+      const aLic = normalizeLic(($player && $player.value) ? $player.value : (selected[0] || ''));
       selected = aLic ? [aLic] : [];
   
       // ensure required data is loaded
       if(aLic) await ensurePlayer(aLic);
       if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
-      const bLic = ($compare && $compare.value) ? $compare.value : '';
+      const bLic = normalizeLic(($compare && $compare.value) ? $compare.value : '');
       if(bLic) await ensurePlayer(bLic);
       updateFocusHeader(aLic, bLic);
       syncCanvasSize();
@@ -854,7 +881,7 @@ root.appendChild(style);
 
   // dropdown selection
   $player.addEventListener('change', async ()=>{
-    const lic = $player.value;
+    const lic = normalizeLic($player.value);
     if(!lic) return;
     if(!PLAYER_INDEX[lic]) return;
     await ensurePlayer(lic);

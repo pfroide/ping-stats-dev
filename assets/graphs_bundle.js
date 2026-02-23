@@ -991,7 +991,7 @@ function renderLegend(series){
   }
 
   function drawAxesBase(ctxX, w, h){
-    ctx.save();
+    ctxX.save();
     try{
     ctxX.strokeStyle = 'rgba(154,164,178,0.25)';
     ctxX.lineWidth = 1;
@@ -1001,7 +1001,7 @@ function renderLegend(series){
     ctxX.stroke();
     // title moved to HTML (better on mobile)
   
-    } finally { ctx.restore(); }
+    } finally { ctxX.restore(); }
 }
 
   function drawYAxis(ctxX, left, top, bottom, right, ymin, ymax){
@@ -1112,6 +1112,8 @@ function renderLegend(series){
 }
 
   function drawLine(labels, series){
+  ctx.save();
+  try{
     const w=_cw, h=_ch;
     const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
@@ -1238,8 +1240,8 @@ function renderLegend(series){
     }
 
     // Legend is now rendered in HTML below the canvas (better on mobile).
-    } finally { ctx2.restore(); }
-  }
+  } finally { ctx.restore(); }
+
 
   function drawBar(labels, series){
     ctx.save();
@@ -1379,8 +1381,6 @@ function renderLegend(series){
     if(!ctx2) return;
     ctx2.save();
     try{
-    ctx2.save();
-    try{
     opts = opts || {};
     // Safety: if no overlay is open, restore scrolling
     if(!$focusHdr || $focusHdr.style.display === 'none'){
@@ -1495,7 +1495,7 @@ function renderLegend(series){
       }
     }
   
-    } finally { ctx.restore(); }
+    } finally { ctx2.restore(); }
 }
 
   function drawBarOn(canvas, labels, series){
@@ -1503,8 +1503,6 @@ function renderLegend(series){
     const ctx2 = f.ctx;
     const w = f.w, h = f.h;
     if(!ctx2) return;
-    ctx2.save();
-    try{
     ctx2.save();
     try{
     ctx2.clearRect(0,0,w,h);
@@ -1580,7 +1578,7 @@ function renderLegend(series){
       }
     }
   
-    } finally { ctx.restore(); }
+    } finally { ctx2.restore(); }
 }
 
 

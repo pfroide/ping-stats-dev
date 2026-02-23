@@ -24,6 +24,10 @@
     }catch(e){}
   };
 
+  // Stub to prevent ReferenceError if render runs before assignment below
+  var drawRadar = function(){ /* stub */ };
+
+
 
   render = async function(opts){
       opts = opts || {};
@@ -1712,7 +1716,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
   }
 
-  function drawRadar(a, b, axes, bgA, bgB){
+  drawRadar = function(a, b, axes, bgA, bgB){
     const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
     const R=Math.min(w,h)*0.38;
@@ -1783,7 +1787,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if(b) poly(b.values, b.label, b.color);
 
     // Legend moved to HTML below the canvas.
-  }
+  };
 
   function buildSegmentBuckets(lic, scope, phase){
     const p = PLAYERS[lic];

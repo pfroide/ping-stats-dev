@@ -580,7 +580,7 @@ root.appendChild(style);
       ['overperf','Surperf'],
       ['pointres_total','Points FFTT total'],
       ['pointres_mean','Points FFTT moyen'],
-      ['opp_pts_mean','Difficulté'],
+      ['opp_pts_mean','Classement adversaire moyen'],
     ],
     timeline: [
       ['pointres','Points FFTT'],
@@ -944,24 +944,76 @@ root.appendChild(style);
   function drawYAxis(ctxX, left, top, bottom, right, ymin, ymax){
     ctx.save();
     try{
-    const ticks = 4;
-    ctxX.font='12px system-ui';
-    ctxX.fillStyle='rgba(154,164,178,0.9)';
-    ctxX.strokeStyle='rgba(154,164,178,0.12)';
-    ctxX.lineWidth=1;
-    for(let t=0;t<=ticks;t++){
-      const f = t/ticks;
-      const v = ymax - (ymax-ymin)*f;
-      const yy = top + (bottom-top)*f;
-      // grid
-      ctxX.beginPath();
-      ctxX.moveTo(left, yy);
-      ctxX.lineTo(right, yy);
-      ctxX.stroke();
-      // label
-      ctxX.fillText(fmtNum(v), 6, yy+4);
-    }
-  
+      // "Nice" tick generation, biased toward integers (better readability)
+      const preferInt = true;
+      let lo = Number(ymin||0), hi = Number(ymax||0);
+      if(!isFinite(lo)) lo = 0;
+      if(!isFinite(hi)) hi = lo + 1;
+      if(hi === lo) hi = lo + 1;
+
+      const range = Math.max(1e-9, hi - lo);
+      const targetTicks = 5;
+
+      const niceStep = (r, n)=>{
+        const raw = r / Math.max(1, n);
+        const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+        const base = raw / pow;
+        let mult = 1;
+        if(base <= 1) mult = 1;
+        else if(base <= 2) mult = 2;
+        else if(base <= 5) mult = 5;
+        else mult = 10;
+        let step = mult * pow;
+        if(preferInt) step = Math.max(1, Math.round(step));
+        return step;
+      };
+
+      let step = niceStep(range, targetTicks-1);
+
+      // Expand bounds to tick grid
+      let y0 = Math.floor(lo/step)*step;
+      let y1 = Math.ceil(hi/step)*step;
+      if(y1 === y0) y1 = y0 + step;
+
+      // Make sure 0 lands on the grid when inside the range
+      if(y0 < 0 && y1 > 0){
+        const k0 = Math.floor(0/step)*step; // always 0
+        y0 = Math.min(y0, k0);
+        y1 = Math.max(y1, k0);
+      }
+
+      // cap tick count (avoid clutter)
+      let count = Math.round((y1 - y0)/step);
+      if(count > 8){
+        // coarser ticks
+        step = step * 2;
+        y0 = Math.floor(lo/step)*step;
+        y1 = Math.ceil(hi/step)*step;
+        count = Math.round((y1 - y0)/step);
+      }
+
+      ctxX.font='12px system-ui';
+      ctxX.fillStyle='rgba(154,164,178,0.9)';
+      ctxX.strokeStyle='rgba(154,164,178,0.12)';
+      ctxX.lineWidth=1;
+
+      const fmtTick = (v)=>{
+        if(preferInt && Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
+        return fmtNum(v);
+      };
+
+      for(let i=0;i<=count;i++){
+        const v = y1 - (i*step);
+        const f = (y1 - v) / (y1 - y0);
+        const yy = top + (bottom-top) * f;
+
+        ctxX.beginPath();
+        ctxX.moveTo(left, yy);
+        ctxX.lineTo(right, yy);
+        ctxX.stroke();
+
+        ctxX.fillText(fmtTick(v), 6, yy+4);
+      }
     } finally { ctx.restore(); }
 }
 
@@ -979,16 +1031,30 @@ root.appendChild(style);
     const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
-    const min = all.length? Math.min(...all):0;
-    const max = all.length? Math.max(...all):1;
-    const pad = (max-min)*0.1 || 1;
-    const ymin=min-pad, ymax=max+pad;
+    let min = all.length? Math.min(...all):0;
+    let max = all.length? Math.max(...all):1;
+    // Always show y=0 baseline on line charts
+    min = Math.min(min, 0);
+    max = Math.max(max, 0);
+    let pad = (max-min)*0.08;
+    if(!isFinite(pad) || pad<=0) pad = 1;
+    let ymin = min - pad;
+    let ymax = max + pad;
     const n=labels.length || 1;
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
     // y axis ticks + grid
     drawYAxis(ctx, left, top, bottom, right, ymin, ymax);
+    // y=0 baseline
+    const yZero = y(0);
+    if(isFinite(yZero) && yZero>=top && yZero<=bottom){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(226,232,240,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(left, yZero); ctx.lineTo(right, yZero); ctx.stroke();
+      ctx.restore();
+    }
 
     // x labels (sparse + rotated on dense charts)
     ctx.fillStyle='rgba(154,164,178,0.9)';
@@ -1043,13 +1109,22 @@ root.appendChild(style);
 
       // value labels: a few key points (not everywhere)
       const drawVal = (xx, yy, v, alignRight)=>{
-        ctx.fillStyle = fill;
         ctx.font='600 12px system-ui';
         const dx = alignRight ? -6 : 6;
         const tx = Math.max(10, Math.min(w-80, xx+dx));
-        // avoid label overlap when multiple series share the same x (common on last point)
-        const ty = yy - 6 + (si * 14);
-        ctx.fillText(fmtNum(v), tx, ty);
+        // keep labels away from borders and reduce overlap with curves
+        let ty = yy - 8 + (si * 14);
+        if(ty < top + 14) ty = yy + 14 + (si * 10);
+        if(ty > bottom - 6) ty = yy - 10 - (si * 10);
+
+        const t = fmtNum(v);
+        const tw = ctx.measureText(t).width;
+        ctx.save();
+        ctx.fillStyle = 'rgba(15,23,42,0.55)'; // subtle backdrop so text doesn't sit "on" the line
+        ctx.fillRect(tx-3, ty-12, tw+6, 16);
+        ctx.fillStyle = fill;
+        ctx.fillText(t, tx, ty);
+        ctx.restore();
       };
       if(lastIdx>=0){
         const idxs = [];
@@ -1190,7 +1265,7 @@ root.appendChild(style);
           if(av==null || !isFinite(av)) return bv;
           return av + (bv-av)*f;
         });
-        return { label: s.label, values: vals };
+        return { label: s.label, values: vals, color: s.color };
       });
       // IMPORTANT: clear + redraw axes each frame, otherwise we get "spaghetti" overlays.
       clearCanvas();
@@ -1237,15 +1312,30 @@ root.appendChild(style);
     const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
-    const min = all.length? Math.min(...all):0;
-    const max = all.length? Math.max(...all):1;
-    const pad = (max-min)*0.1 || 1;
-    const ymin=min-pad, ymax=max+pad;
+    let min = all.length? Math.min(...all):0;
+    let max = all.length? Math.max(...all):1;
+    // Always show y=0 baseline on line charts
+    min = Math.min(min, 0);
+    max = Math.max(max, 0);
+    let pad = (max-min)*0.08;
+    if(!isFinite(pad) || pad<=0) pad = 1;
+    let ymin = min - pad;
+    let ymax = max + pad;
     const n=labels.length || 1;
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
 
     drawYAxis(ctx2, left, top, bottom, right, ymin, ymax);
+
+    // y=0 baseline
+    const yZero = y(0);
+    if(isFinite(yZero) && yZero>=top && yZero<=bottom){
+      ctx2.save();
+      ctx2.strokeStyle = 'rgba(226,232,240,0.55)';
+      ctx2.lineWidth = 1.4;
+      ctx2.beginPath(); ctx2.moveTo(left, yZero); ctx2.lineTo(right, yZero); ctx2.stroke();
+      ctx2.restore();
+    }
 
     // x labels (sparse + drop year + rotate 45° when dense/dates)
     ctx2.fillStyle='rgba(154,164,178,0.9)';
@@ -1315,8 +1405,17 @@ root.appendChild(style);
         const alignRight = (i >= n-2);
         const dx = alignRight ? -6 : 6;
         const tx = Math.max(10, Math.min(w-80, xx+dx));
-        const ty = yy - 6 + (si*14);
-        ctx2.fillText(fmtNum(v), tx, ty);
+        let ty = yy - 8 + (si*14);
+        if(ty < top + 14) ty = yy + 14 + (si*10);
+        if(ty > bottom - 6) ty = yy - 10 - (si*10);
+        const t = fmtNum(v);
+        const tw = ctx2.measureText(t).width;
+        ctx2.save();
+        ctx2.fillStyle = 'rgba(15,23,42,0.55)';
+        ctx2.fillRect(tx-3, ty-12, tw+6, 16);
+        ctx2.fillStyle = col;
+        ctx2.fillText(t, tx, ty);
+        ctx2.restore();
       }
     }
   
@@ -1570,6 +1669,26 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     return {keyOrder, labels, buckets: out};
   }
 
+
+  function summaryForSelection(lic, scope, phase){
+    // Phase- and context-aware summary (used for Focus/Kiviat bottom stats)
+    if(!lic || !PLAYERS[lic]) return {matches:0,wins:0,losses:0,win_rate:null,perfs:0,contres:0,pointres_total:0};
+    const b = buildSegmentBuckets(lic, scope, phase);
+    let m=0,w=0,l=0,per=0,con=0,pts=0;
+    for(const k of (b.keyOrder||[])){
+      const o = b.buckets.get(k);
+      if(!o) continue;
+      m += Number(o.matches||0);
+      w += Number(o.wins||0);
+      l += Number(o.losses||0);
+      per += Number(o.perfs||0);
+      con += Number(o.contres||0);
+      pts += Number(o.pointres_total||0);
+    }
+    const wr = m ? (w/m) : null;
+    return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
+  }
+
   function segmentLabels(scope, phase, lics){
     lics = (lics && lics.length) ? lics : selected;
     const lic = lics[0];
@@ -1769,13 +1888,15 @@ async function render(opts){
       setTitleText(`Kiviat profil — ${phaseLbl}`);
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
       drawRadar(aSeries, bSeries, axes, bgA, bgB);
-      $info.textContent = 'Kiviat: A vs ' + (bSeries? bSeries.label : '—');
+      $info.textContent = 'Kiviat: ' + aSeries.label + ' vs ' + (bSeries? bSeries.label : '—');
 
       // A/B synthesis cards under the kiviat (mobile-friendly)
+      const phase = (pv==='1' || pv==='p1') ? '1' : ((pv==='2' || pv==='p2') ? '2' : 'all');
       if($compareCards){
         if(hasB){
-          const sa = (PLAYERS[aLic] && PLAYERS[aLic].summary) ? PLAYERS[aLic].summary : {};
-          const sb = (PLAYERS[bLic] && PLAYERS[bLic].summary) ? PLAYERS[bLic].summary : {};
+          const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+          const sa = summaryForSelection(aLic, scopeSel, phase);
+          const sb = summaryForSelection(bLic, scopeSel, phase);
           const fmtPct = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100) + '%');
           const fmtInt = (x)=> (x==null||!isFinite(x)) ? '—' : String(Math.round(x));
           const fmtF = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100)/100).toFixed(2);
@@ -1912,8 +2033,12 @@ async function render(opts){
             // timeline club not supported (kept off)
           }
         }
-        if(ctMulti==='bar') drawBarOn(cv, b2.labels, b2.series);
-        else drawChartOn(cv, b2.labels, b2.series);
+        requestAnimationFrame(()=>{
+          requestAnimationFrame(()=>{
+            if(ctMulti==='bar') drawBarOn(cv, b2.labels, b2.series);
+            else drawChartOn(cv, b2.labels, b2.series);
+          });
+        });
       }
       $info.textContent = `Mode ${mode} · vue mini-graphs · métrique ${metric} · joueurs ${toDraw.filter(Boolean).length}`;
       requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
@@ -2289,6 +2414,114 @@ async function render(opts){
       return out;
     }
 
+    async function buildCompositeRadar(){
+      const base = $canvas;
+      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
+      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 420);
+      const pad = 12;
+      const headerH = 54;
+      const legendH = 34;
+      const statsH = 120;
+
+      const aLic = selected[0] || '';
+      const bLic = ($compare && $compare.value) ? $compare.value : '';
+      const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
+      const phaseSel = (pv==='1' || pv==='p1') ? '1' : ((pv==='2' || pv==='p2') ? '2' : 'all');
+      const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+
+      const out = document.createElement('canvas');
+      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
+      out.width = Math.floor(w * dpr);
+      out.height = Math.floor((headerH + legendH + pad + h + statsH) * dpr);
+      const c = out.getContext('2d');
+      c.setTransform(dpr,0,0,dpr,0,0);
+
+      // bg
+      c.fillStyle = '#0b1220';
+      c.fillRect(0,0,w,(headerH + legendH + pad + h + statsH));
+
+      // title
+      const title = ($title && ($title.textContent||'').trim()) ? $title.textContent.trim() : 'Kiviat profil';
+      c.fillStyle = '#e9eef8';
+      c.font = '900 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      c.textBaseline = 'middle';
+      c.fillText(title, pad, Math.floor(headerH/2));
+
+      // legend (HTML -> canvas)
+      c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      c.fillStyle = 'rgba(255,255,255,0.80)';
+      let lx = pad, ly = headerH + 8;
+      const items = $legend ? Array.from($legend.querySelectorAll('.it')) : [];
+      for(const it of items){
+        const sw = it.querySelector('.sw');
+        const label = (it.textContent||'').trim();
+        const col = sw ? (sw.style.background || '#9aa4b2') : '#9aa4b2';
+        c.fillStyle = col;
+        c.fillRect(lx, ly+4, 12, 12);
+        c.fillStyle = 'rgba(255,255,255,0.82)';
+        c.fillText(label, lx+16, ly+14);
+        lx += 16 + c.measureText(label).width + 18;
+        if(lx > w - 220){ lx = pad; ly += 18; }
+      }
+
+      // graph
+      c.drawImage(base, 0, headerH + legendH + pad, w, h);
+
+      // stats cards (phase-aware)
+      const sa = summaryForSelection(aLic, scopeSel, phaseSel);
+      const sb = bLic ? summaryForSelection(bLic, scopeSel, phaseSel) : null;
+
+      const fmtPct = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100) + '%');
+      const fmtInt = (x)=> (x==null||!isFinite(x)) ? '—' : String(Math.round(x));
+      const fmtPts = (x)=> (x==null||!isFinite(x)) ? '—' : fmtNum(x);
+
+      const sY = headerH + legendH + pad + h + 14;
+      const cardW = Math.floor((w - pad*4)/3);
+      const cardH = 86;
+      const cards = [
+        {t:'Tx victoire', a: fmtPct(sa.win_rate), b: sb?fmtPct(sb.win_rate):'—', d: sb?(`Δ ${fmtPct((sa.win_rate||0)-(sb.win_rate||0))}`):''},
+        {t:'Perfs / Contres', a: `${fmtInt(sa.perfs)} / ${fmtInt(sa.contres)}`, b: sb?(`${fmtInt(sb.perfs)} / ${fmtInt(sb.contres)}`):'—', d: sb?(`Δ ${(fmtInt((sa.perfs||0)-(sb.perfs||0)))} / ${(fmtInt((sa.contres||0)-(sb.contres||0)))}`):''},
+        {t:'Points FFTT', a: fmtPts(sa.pointres_total), b: sb?fmtPts(sb.pointres_total):'—', d: sb?(`Δ ${fmtPts((sa.pointres_total||0)-(sb.pointres_total||0))}`):''},
+      ];
+
+      for(let i=0;i<cards.length;i++){
+        const x = pad + i*(cardW + pad);
+        const y = sY;
+        c.save();
+        c.fillStyle = 'rgba(9,14,25,0.72)';
+        c.strokeStyle = 'rgba(255,255,255,0.08)';
+        c.lineWidth = 1;
+        roundRectPath(c, x, y, cardW, cardH, 14);
+        c.fill(); c.stroke();
+        c.restore();
+
+        const cc = cards[i];
+        c.fillStyle = 'rgba(255,255,255,0.75)';
+        c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.textBaseline = 'top';
+        c.fillText(cc.t, x+10, y+10);
+
+        c.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.fillStyle = COLOR_A;
+        c.fillText(cc.a, x+10, y+34);
+        c.fillStyle = 'rgba(255,255,255,0.65)';
+        c.font = '800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.fillText('vs', x+10 + c.measureText(cc.a).width + 10, y+36);
+        c.fillStyle = COLOR_B;
+        c.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        c.fillText(cc.b, x+10 + c.measureText(cc.a).width + 34, y+34);
+
+        if(cc.d){
+          c.fillStyle = 'rgba(255,255,255,0.58)';
+          c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+          c.fillText(cc.d, x+10, y+62);
+        }
+      }
+
+      return out;
+    }
+
+
     // If we are in mini-graphs view, keep current behavior (multiple downloads)
     if(view==='multiples' && $multi.style.display!=='none'){
       const canv = Array.from($multi.querySelectorAll('canvas'));
@@ -2314,6 +2547,10 @@ async function render(opts){
         return;
       }
     }catch(e){ console.warn(e); }
+
+    if(mode==='radar'){
+      try{ const out = await buildCompositeRadar(); dl(out, safe(`kiviat_${stamp}`)); return; }catch(e){ console.warn(e); }
+    }
 
     dl($canvas, safe(`graph_${mode}_${stamp}`));
   });

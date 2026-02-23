@@ -14,6 +14,17 @@
   // the identifier exists.
   var render;
 
+  // Wrapper to avoid scope/hoisting issues across bundling contexts
+  // The real implementation is assigned to window.__g_updateFocusHeader later.
+  var updateFocusHeader = function(aLic, bLic){
+    try{
+      if(typeof window.__g_updateFocusHeader === 'function'){
+        return window.__g_updateFocusHeader(aLic, bLic);
+      }
+    }catch(e){}
+  };
+
+
   render = async function(opts){
       opts = opts || {};
   
@@ -1932,7 +1943,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   // Heatmap removed.
 
   
-  function updateFocusHeader(aLic, bLic){
+  window.__g_updateFocusHeader = function(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
     $focusHdr.style.display = 'block';
@@ -1955,6 +1966,9 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     }
     if($focusSubA) $focusSubA.textContent = pa ? subText(pa, aLic) : '';
     if($focusSubB) $focusSubB.textContent = pb ? subText(pb, bLic) : '';
+    // expose real impl
+    updateFocusHeader = window.__g_updateFocusHeader;
+
 
     // images
     if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);

@@ -116,7 +116,7 @@
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
     .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:50% 30%; transform:scale(1.06); }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
@@ -139,9 +139,9 @@
   
 root.appendChild(style);
 
-  // Player photos (offline): images_joueurs/<licence>.(webp|jpg|jpeg|png)
-  const PHOTO_DIR = 'images_joueurs/';
-  const PHOTO_EXTS = ['webp','jpg','jpeg','png'];
+  // Player photos (offline): assets/avatars/<licence>.jpg (pre-cropped)
+  const PHOTO_DIR = 'assets/avatars/';
+  const PHOTO_EXTS = ['jpg','jpeg'];
   const _PHOTO_CACHE = Object.create(null);
 
   function photoCandidates(lic){
@@ -580,7 +580,7 @@ root.appendChild(style);
       ['overperf','Surperf'],
       ['pointres_total','Points FFTT total'],
       ['pointres_mean','Points FFTT moyen'],
-      ['opp_pts_mean','Difficulté'],
+      ['opp_pts_mean','Classement adversaire moyen'],
     ],
     timeline: [
       ['pointres','Points FFTT'],
@@ -917,7 +917,70 @@ root.appendChild(style);
     return h % 360;
   }
 
-  function renderLegend(series){
+  
+  function summaryFromSegments(obj, scopeVal, phaseVal){
+    if(!obj) return {};
+    const segAll = obj.segments || {};
+    const scope = String(scopeVal||'tous');
+    const phase = String(phaseVal||'all');
+
+    // Prefer native 'tous' if it exists, to avoid double counting.
+    let scopes = [scope];
+    if(scope==='tous' && !segAll.tous){
+      scopes = ['indiv','equipe'];
+    }
+    const out = {matches:0,wins:0,losses:0,perfs:0,contres:0,pointres_total:0, win_rate:null, opp_pts_mean:null};
+    let oppSum = 0, oppW = 0;
+
+    for(const sc of scopes){
+      const segs = segAll[sc];
+      if(!segs) continue;
+      for(const k in segs){
+        const s = segs[k];
+        if(!s) continue;
+        if(phase!=='all' && String(s.phase)!==phase) continue;
+        const m = (+s.matches)||0;
+        out.matches += m;
+        out.wins += (+s.wins)||0;
+        out.losses += (+s.losses)||0;
+        out.perfs += (+s.perfs)||0;
+        out.contres += (+s.contres)||0;
+        out.pointres_total += (+s.pointres_total)||0;
+        const opp = (s.opp_pts_mean);
+        if(isFinite(opp) && m>0){ oppSum += (+opp)*m; oppW += m; }
+      }
+    }
+    out.win_rate = out.matches ? (out.wins / out.matches) : null;
+    out.opp_pts_mean = oppW ? (oppSum / oppW) : null;
+    return out;
+  }
+
+  function renderCompareCards(aLic, bLic, scopeVal, phaseVal){
+    if(!$compareCards){ return; }
+    const hasB = !!(bLic && PLAYERS[bLic]);
+    if(!hasB){
+      $compareCards.style.display='none';
+      $compareCards.innerHTML='';
+      return;
+    }
+    const sa = summaryFromSegments(PLAYERS[aLic], scopeVal, phaseVal);
+    const sb = summaryFromSegments(PLAYERS[bLic], scopeVal, phaseVal);
+
+    const fmtPct = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100) + '%');
+    const fmtInt = (x)=> (x==null||!isFinite(x)) ? '—' : String(Math.round(x));
+    const fmtF = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100)/100).toFixed(2);
+
+    const cards = [
+      {t:'Tx victoire', a: fmtPct(sa.win_rate), b: fmtPct(sb.win_rate), d: `Δ ${fmtPct((sa.win_rate||0)-(sb.win_rate||0))}`},
+      {t:'Perfs / Contres', a: `${fmtInt(sa.perfs)} / ${fmtInt(sa.contres)}`, b: `${fmtInt(sb.perfs)} / ${fmtInt(sb.contres)}`, d: `Δ ${(fmtInt((sa.perfs||0)-(sb.perfs||0)))} / ${(fmtInt((sa.contres||0)-(sb.contres||0)))}`},
+      {t:'Points FFTT', a: fmtF(sa.pointres_total), b: fmtF(sb.pointres_total), d: `Δ ${fmtF((sa.pointres_total||0)-(sb.pointres_total||0))}`},
+      {t:'Classement adversaire moyen', a: fmtInt(sa.opp_pts_mean), b: fmtInt(sb.opp_pts_mean), d: `Δ ${fmtInt((sa.opp_pts_mean||0)-(sb.opp_pts_mean||0))}`},
+    ];
+    $compareCards.style.display='grid';
+    $compareCards.innerHTML = cards.map(c=>`<div class="g-kpi-card"><div class="t">${esc(c.t)}</div><div class="v"><span style="color:${COLOR_A}">${esc(c.a)}</span> <span class="g-muted" style="font-weight:700">vs</span> <span style="color:${COLOR_B}">${esc(c.b)}</span></div><div class="d">${esc(c.d)}</div></div>`).join('');
+  }
+
+function renderLegend(series){
     if(!$legend) return;
     if(!series || !series.length){ $legend.innerHTML=''; return; }
     $legend.innerHTML = series.map(s=>{
@@ -942,27 +1005,101 @@ root.appendChild(style);
 }
 
   function drawYAxis(ctxX, left, top, bottom, right, ymin, ymax){
-    ctx.save();
-    try{
-    const ticks = 4;
+  // Nice tick generation with a bias toward integers + always show y=0 line when in range.
+  ctxX.save();
+  try{
+    // Guard
+    if(!isFinite(ymin) || !isFinite(ymax) || ymax===ymin){
+      ymin = (isFinite(ymin)? ymin : 0);
+      ymax = ymin + 1;
+    }
+
+    const preferInt = true;
+    const maxTicks = 5;
+
+    function niceStep(raw){
+      if(!isFinite(raw) || raw<=0) return 1;
+      const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+      const f = raw / pow;
+      let nf;
+      if(f<=1) nf=1;
+      else if(f<=2) nf=2;
+      else if(f<=5) nf=5;
+      else nf=10;
+      return nf * pow;
+    }
+
+    function niceTicks(a, b){
+      const span = Math.abs(b-a) || 1;
+      let step = niceStep(span / (maxTicks-1));
+      if(preferInt){
+        if(step < 1 && span <= 20) step = 1;
+      }
+      let t0 = Math.floor(a/step) * step;
+      let t1 = Math.ceil(b/step) * step;
+      if(0 >= a - 1e-9 && 0 <= b + 1e-9){
+        t0 = Math.min(t0, 0);
+        t1 = Math.max(t1, 0);
+      }
+      const out = [];
+      for(let v=t0, k=0; v<=t1+1e-9 && k<50; v+=step, k++){
+        const vv = (Math.abs(v) < 1e-12) ? 0 : v;
+        out.push(vv);
+      }
+      while(out.length > maxTicks){
+        const tmp = [];
+        for(let i=0;i<out.length;i+=2) tmp.push(out[i]);
+        if(tmp.length===out.length) break;
+        out.length = 0;
+        for(const x of tmp) out.push(x);
+      }
+      if(out.length<2){
+        out.length = 0;
+        out.push(a, b);
+      }
+      if(preferInt){
+        let ok=true;
+        for(const v of out){
+          if(Math.abs(v - Math.round(v)) > 1e-6){ ok=false; break; }
+        }
+        if(ok){
+          for(let i=0;i<out.length;i++) out[i]=Math.round(out[i]);
+        }
+      }
+      return out;
+    }
+
+    const ticks = niceTicks(ymin, ymax);
+
     ctxX.font='12px system-ui';
     ctxX.fillStyle='rgba(154,164,178,0.9)';
     ctxX.strokeStyle='rgba(154,164,178,0.12)';
     ctxX.lineWidth=1;
-    for(let t=0;t<=ticks;t++){
-      const f = t/ticks;
-      const v = ymax - (ymax-ymin)*f;
-      const yy = top + (bottom-top)*f;
-      // grid
+
+    const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
+
+    for(const v of ticks){
+      const yy = y(v);
       ctxX.beginPath();
       ctxX.moveTo(left, yy);
       ctxX.lineTo(right, yy);
       ctxX.stroke();
-      // label
       ctxX.fillText(fmtNum(v), 6, yy+4);
     }
-  
-    } finally { ctx.restore(); }
+
+    if(0 >= ymin - 1e-9 && 0 <= ymax + 1e-9){
+      const y0 = y(0);
+      ctxX.save();
+      ctxX.strokeStyle = 'rgba(230,233,239,0.22)';
+      ctxX.lineWidth = 1.5;
+      ctxX.beginPath();
+      ctxX.moveTo(left, y0);
+      ctxX.lineTo(right, y0);
+      ctxX.stroke();
+      ctxX.restore();
+    }
+
+  } finally { ctxX.restore(); }
 }
 
   function drawAxes(){
@@ -982,10 +1119,15 @@ root.appendChild(style);
     const min = all.length? Math.min(...all):0;
     const max = all.length? Math.max(...all):1;
     const pad = (max-min)*0.1 || 1;
-    const ymin=min-pad, ymax=max+pad;
+    let ymin=min-pad, ymax=max+pad;
+    // Always include 0 in the visible range (required baseline)
+    ymin = Math.min(ymin, 0);
+    ymax = Math.max(ymax, 0);
+    if(ymax===ymin){ ymax = ymin + 1; }
     const n=labels.length || 1;
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
+    const _occ = []; // label collision avoidance
 
     // y axis ticks + grid
     drawYAxis(ctx, left, top, bottom, right, ymin, ymax);
@@ -1045,11 +1187,36 @@ root.appendChild(style);
       const drawVal = (xx, yy, v, alignRight)=>{
         ctx.fillStyle = fill;
         ctx.font='600 12px system-ui';
+        const txt = fmtNum(v);
         const dx = alignRight ? -6 : 6;
-        const tx = Math.max(10, Math.min(w-80, xx+dx));
-        // avoid label overlap when multiple series share the same x (common on last point)
-        const ty = yy - 6 + (si * 14);
-        ctx.fillText(fmtNum(v), tx, ty);
+        let tx = Math.max(10, Math.min(w-80, xx+dx));
+        const candidates = [-12, -26, 10, 24, -40, 38];
+        let ty = yy - 12;
+        const measureW = Math.max(24, Math.min(72, (txt.length*7)));
+        const measureH = 14;
+
+        function collides(x0,y0){
+          for(const r of _occ){
+            const ox=r.x, oy=r.y, ow=r.w, oh=r.h;
+            if(!(x0+measureW < ox || ox+ow < x0 || y0+measureH < oy || oy+oh < y0)) return true;
+          }
+          return false;
+        }
+
+        for(const off of candidates){
+          const y0 = yy + off + (si*8);
+          const x0 = tx;
+          if(y0 < top+6 || y0 > bottom-6) continue;
+          if(!collides(x0, y0-measureH)){
+            ty = y0;
+            _occ.push({x:x0, y:y0-measureH, w:measureW, h:measureH});
+            ctx.fillText(txt, x0, ty);
+            return;
+          }
+        }
+        ty = Math.max(top+10, Math.min(bottom-6, yy - 12));
+        _occ.push({x:tx, y:ty-measureH, w:measureW, h:measureH});
+        ctx.fillText(txt, tx, ty);
       };
       if(lastIdx>=0){
         const idxs = [];
@@ -1071,6 +1238,7 @@ root.appendChild(style);
     }
 
     // Legend is now rendered in HTML below the canvas (better on mobile).
+    } finally { ctx2.restore(); }
   }
 
   function drawBar(labels, series){
@@ -1205,12 +1373,14 @@ root.appendChild(style);
 
 
   function drawChartOn(canvas, labels, series, opts){
-    ctx.save();
-    try{
     const f = fitCanvas(canvas, 160, 120);
     const ctx2 = f.ctx;
     const w = f.w, h = f.h;
     if(!ctx2) return;
+    ctx2.save();
+    try{
+    ctx2.save();
+    try{
     opts = opts || {};
     // Safety: if no overlay is open, restore scrolling
     if(!$focusHdr || $focusHdr.style.display === 'none'){
@@ -1240,10 +1410,15 @@ root.appendChild(style);
     const min = all.length? Math.min(...all):0;
     const max = all.length? Math.max(...all):1;
     const pad = (max-min)*0.1 || 1;
-    const ymin=min-pad, ymax=max+pad;
+    let ymin=min-pad, ymax=max+pad;
+    // Always include 0 in the visible range (required baseline)
+    ymin = Math.min(ymin, 0);
+    ymax = Math.max(ymax, 0);
+    if(ymax===ymin){ ymax = ymin + 1; }
     const n=labels.length || 1;
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
+    const _occ = []; // label collision avoidance
 
     drawYAxis(ctx2, left, top, bottom, right, ymin, ymax);
 
@@ -1324,12 +1499,14 @@ root.appendChild(style);
 }
 
   function drawBarOn(canvas, labels, series){
-    ctx.save();
-    try{
     const f = fitCanvas(canvas, 160, 120);
     const ctx2 = f.ctx;
     const w = f.w, h = f.h;
     if(!ctx2) return;
+    ctx2.save();
+    try{
+    ctx2.save();
+    try{
     ctx2.clearRect(0,0,w,h);
     drawAxesBase(ctx2, w, h);
     if(!labels || !labels.length) return;
@@ -1349,6 +1526,7 @@ root.appendChild(style);
     if(ymax===ymin) ymax = ymin + 1;
     const x = (i)=> left + (right-left)*(n<=1?0:i/(n-1));
     const y = (v)=> bottom - (bottom-top)*((v - ymin)/(ymax-ymin));
+    const _occ = []; // label collision avoidance
     drawYAxis(ctx2, left, top, bottom, right, ymin, ymax);
 
     // x labels (sparse, drop year on dates, rotate 45° when dates/dense)
@@ -1769,27 +1947,10 @@ async function render(opts){
       setTitleText(`Kiviat profil — ${phaseLbl}`);
       renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
       drawRadar(aSeries, bSeries, axes, bgA, bgB);
-      $info.textContent = 'Kiviat: A vs ' + (bSeries? bSeries.label : '—');
+      $info.textContent = 'Kiviat: ' + (aSeries.label||'A') + ' vs ' + (bSeries? bSeries.label : '—');
 
       // A/B synthesis cards under the kiviat (mobile-friendly)
-      if($compareCards){
-        if(hasB){
-          const sa = (PLAYERS[aLic] && PLAYERS[aLic].summary) ? PLAYERS[aLic].summary : {};
-          const sb = (PLAYERS[bLic] && PLAYERS[bLic].summary) ? PLAYERS[bLic].summary : {};
-          const fmtPct = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100) + '%');
-          const fmtInt = (x)=> (x==null||!isFinite(x)) ? '—' : String(Math.round(x));
-          const fmtF = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100)/100).toFixed(2);
-          const cards = [
-            {t:'Tx victoire', a: fmtPct(sa.win_rate), b: fmtPct(sb.win_rate), d: `Δ ${fmtPct((sa.win_rate||0)-(sb.win_rate||0))}`},
-            {t:'Perfs / Contres', a: `${fmtInt(sa.perfs)} / ${fmtInt(sa.contres)}`, b: `${fmtInt(sb.perfs)} / ${fmtInt(sb.contres)}`, d: `Δ ${(fmtInt((sa.perfs||0)-(sb.perfs||0)))} / ${(fmtInt((sa.contres||0)-(sb.contres||0)))}`},
-            {t:'Points FFTT', a: fmtF(sa.pointres_total), b: fmtF(sb.pointres_total), d: `Δ ${fmtF((sa.pointres_total||0)-(sb.pointres_total||0))}`},
-          ];
-          $compareCards.style.display = 'grid';
-          $compareCards.innerHTML = cards.map(c=>`<div class="g-kpi-card"><div class="t">${esc(c.t)}</div><div class="v"><span style="color:${COLOR_A}">${esc(c.a)}</span> <span class="g-muted" style="font-weight:700">vs</span> <span style="color:${COLOR_B}">${esc(c.b)}</span></div><div class="d">${esc(c.d)}</div></div>`).join('');
-        }else{
-          $compareCards.style.display = 'none';
-          $compareCards.innerHTML = '';
-        }
+      renderCompareCards(aLic, bLic, ($scope && $scope.value) ? $scope.value : 'tous', ($phase && $phase.value) ? $phase.value : 'all');
       }
       requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
       return;
@@ -1815,7 +1976,9 @@ async function render(opts){
     if(mode==='segments') bundle = seriesSegments(metric, scope, phase, lics);
     else bundle = seriesTimeline(metric, scope, phase, lics);
 
-    // Fixed colors in comparison mode (A=green, B=red, Club=grey, Δ=purple)
+        // Always keep A in green (prevents color drift when switching views/types/focus)
+    if(bundle && bundle.series && bundle.series.length>=1){ bundle.series[0].color = COLOR_A; }
+// Fixed colors in comparison mode (A=green, B=red, Club=grey, Δ=purple)
     if(hasB && bundle && bundle.series && bundle.series.length>=2){
       bundle.series[0].color = COLOR_A;
       bundle.series[1].color = COLOR_B;
@@ -1894,8 +2057,9 @@ async function render(opts){
         let b2;
         if(mode==='segments') b2 = seriesSegments(metric, scope, phase, [lic]);
         else b2 = seriesTimeline(metric, scope, phase, [lic]);
-        if(hasB && b2 && b2.series && b2.series.length){
-          b2.series[0].color = (lic===aLic) ? COLOR_A : COLOR_B;
+        if(b2 && b2.series && b2.series.length){
+          // Keep stable colors across views
+          b2.series[0].color = (hasB ? ((lic===aLic) ? COLOR_A : COLOR_B) : COLOR_A);
         }
         // add club overlay if enabled and allowed
         if(($club && ($club && ($club && $club.checked))) && !$club.disabled){
@@ -1915,6 +2079,7 @@ async function render(opts){
         if(ctMulti==='bar') drawBarOn(cv, b2.labels, b2.series);
         else drawChartOn(cv, b2.labels, b2.series);
       }
+      renderCompareCards(aLic, bLic, scope, phase);
       $info.textContent = `Mode ${mode} · vue mini-graphs · métrique ${metric} · joueurs ${toDraw.filter(Boolean).length}`;
       requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
       return;
@@ -1933,6 +2098,7 @@ async function render(opts){
     }
     LAST_RENDER = target;
     const who = hasB ? `${(PLAYERS[aLic].name||aLic)} vs ${(PLAYERS[bLic].name||bLic)}` : `${selected.length}`;
+    renderCompareCards(aLic, bLic, scope, phase);
     $info.textContent = `Mode ${mode} · métrique ${metric} · ${hasB ? 'comparaison' : 'joueurs'} ${who}`;
     requestAnimationFrame(()=>{ try{$canvas.style.opacity='1';}catch(e){} });
   }
@@ -2241,6 +2407,125 @@ async function render(opts){
       c.drawImage(base, 0, headerH + pad, w, h);
       return out;
     }
+async function buildCompositeRadar(){
+  // Composite export for radar: title + canvas + legend + stats table
+  const base = $canvas;
+  const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
+  const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 520);
+
+  const aLic = selected[0] || '';
+  if(!aLic || !PLAYER_INDEX[aLic]) return null;
+  const bLic = ($compare && $compare.value) ? $compare.value : '';
+  const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
+
+  const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
+  const phaseKey = (pv==='1' || pv==='p1') ? 'p1' : ((pv==='2' || pv==='p2') ? 'p2' : 'all');
+  const phaseLbl = (pv==='all') ? 'Toutes phases' : ('Phase ' + (pv==='p1'?'1':(pv==='p2'?'2':pv)));
+
+  const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
+  const Araw = (((PLAYERS[aLic]||{}).radar||{})[phaseKey]||{}).raw || {};
+  const Braw = hasB ? ((((PLAYERS[bLic]||{}).radar||{})[phaseKey]||{}).raw || {}) : null;
+  const Craw = (($club && $club.checked) && CLUB && CLUB.radar && CLUB.radar[phaseKey]) ? (CLUB.radar[phaseKey].raw||{}) : null;
+
+  const title = `Kiviat profil — ${phaseLbl}`;
+  const nameA = (PLAYERS[aLic] && (PLAYERS[aLic].name||aLic)) || aLic;
+  const nameB = hasB ? ((PLAYERS[bLic] && (PLAYERS[bLic].name||bLic)) || bLic) : (Craw ? 'Club' : '');
+
+  // Layout
+  const pad = 14;
+  const titleH = 34;
+  const legendH = 30;
+  const rowH = 22;
+  const tableH = Math.min(420, (axes.length * rowH) + 38);
+  const totalH = titleH + pad + h + pad + legendH + pad + tableH + pad;
+
+  const out = document.createElement('canvas');
+  const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
+  out.width = Math.floor(w * dpr);
+  out.height = Math.floor(totalH * dpr);
+  const c = out.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+
+  // bg
+  c.fillStyle = '#0b1220';
+  c.fillRect(0,0,w,totalH);
+
+  // Title
+  c.fillStyle = '#e9eef8';
+  c.font = '900 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+  c.textBaseline = 'top';
+  c.fillText(title, pad, 10);
+
+  // Canvas
+  c.drawImage(base, 0, titleH, w, h);
+
+  // Legend
+  const legendY = titleH + h + 10;
+  const items = [];
+  items.push({label: nameA, color: COLOR_A});
+  if(hasB) items.push({label: nameB, color: COLOR_B});
+  else if(Craw) items.push({label: 'Club', color: COLOR_CLUB});
+
+  let lx = pad;
+  c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+  c.textBaseline = 'middle';
+  for(const it of items){
+    c.fillStyle = it.color;
+    c.fillRect(lx, legendY+8, 12, 12);
+    lx += 16;
+    c.fillStyle = '#e9eef8';
+    c.fillText(it.label, lx, legendY+14);
+    lx += Math.min(240, 10 + it.label.length*7);
+  }
+
+  // Table header
+  const tableY = legendY + legendH + 8;
+  const col1 = pad;
+  const col2 = Math.floor(w*0.60);
+  const col3 = Math.floor(w*0.80);
+
+  c.fillStyle = 'rgba(255,255,255,0.06)';
+  c.fillRect(pad, tableY, w-2*pad, 30);
+  c.strokeStyle = 'rgba(255,255,255,0.10)';
+  c.strokeRect(pad, tableY, w-2*pad, 30);
+
+  c.fillStyle = '#cfe1ff';
+  c.font = '800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+  c.textBaseline = 'middle';
+  c.fillText('Stat', col1, tableY+15);
+  c.fillText(nameA, col2, tableY+15);
+  if(hasB) c.fillText(nameB, col3, tableY+15);
+  else if(Craw) c.fillText('Club', col3, tableY+15);
+
+  // Rows
+  c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+  let ry = tableY + 30;
+  for(let i=0;i<axes.length;i++){
+    const ax = axes[i];
+    const k = ax.key;
+    const lbl = ax.label || ax.key;
+    const av = (Araw[k]!=null && isFinite(Araw[k])) ? fmtNum(Araw[k]) : '—';
+    const bv = hasB ? ((Braw[k]!=null && isFinite(Braw[k])) ? fmtNum(Braw[k]) : '—') : (Craw ? ((Craw[k]!=null && isFinite(Craw[k])) ? fmtNum(Craw[k]) : '—') : '—');
+
+    if(i%2===0){
+      c.fillStyle = 'rgba(255,255,255,0.03)';
+      c.fillRect(pad, ry, w-2*pad, rowH);
+    }
+    c.fillStyle = 'rgba(230,233,239,0.92)';
+    c.textBaseline = 'middle';
+    c.fillText(lbl, col1, ry + rowH/2);
+    c.fillStyle = COLOR_A;
+    c.fillText(av, col2, ry + rowH/2);
+    c.fillStyle = hasB ? COLOR_B : (Craw ? COLOR_CLUB : 'rgba(230,233,239,0.7)');
+    c.fillText(bv, col3, ry + rowH/2);
+
+    ry += rowH;
+    if(ry > tableY + tableH - rowH) break;
+  }
+
+  return out;
+}
+
 
     async function buildCompositeSheet(){
       const base = $sheetCanvas;
@@ -2314,6 +2599,14 @@ async function render(opts){
         return;
       }
     }catch(e){ console.warn(e); }
+
+    // Radar needs title/legend/stats in the PNG
+    if(mode==='radar'){
+      try{
+        const out = await buildCompositeRadar();
+        if(out){ dl(out, safe(`kiviat_${stamp}`)); return; }
+      }catch(e){ console.warn(e); }
+    }
 
     dl($canvas, safe(`graph_${mode}_${stamp}`));
   });

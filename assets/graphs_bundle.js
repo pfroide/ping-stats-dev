@@ -1334,10 +1334,14 @@ root.appendChild(style);
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     let min = all.length? Math.min(...all):0;
     let max = all.length? Math.max(...all):1;
-    // Always show y=0 baseline on line charts
-    min = Math.min(min, 0);
-    max = Math.max(max, 0);
-    let pad = (max-min)*0.08;
+    // Y-range policy:
+    // - default: include y=0 for context (requested on line charts)
+    // - fiche: allow a tighter scale (small variations become readable)
+    if(!opts.tightY){
+      min = Math.min(min, 0);
+      max = Math.max(max, 0);
+    }
+    let pad = (max-min)*(opts.tightY ? 0.05 : 0.08);
     if(!isFinite(pad) || pad<=0) pad = 1;
     let ymin = min - pad;
     let ymax = max + pad;

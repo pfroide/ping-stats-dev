@@ -465,7 +465,9 @@ root.appendChild(style);
     if(!lic) return;
     const p = PLAYERS[lic];
     if(!p) return;
-    const s = p.summary || {};
+    const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+    const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
+    const s = summaryForSelection(lic, scopeSel, phaseSel);
     $sheetName.textContent = (p.name || lic);
     const m = Number(s.matches||0);
     const w = Number(s.wins||0);
@@ -547,7 +549,7 @@ root.appendChild(style);
       }
       push(firstIdx); push(lastIdx); push(minIdx); push(maxIdx);
 
-      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs});
+      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs, tightY:true});
 
       // details table (match by match)
       const rows = (tl || []).slice().reverse().slice(0, 60);
@@ -1047,9 +1049,12 @@ root.appendChild(style);
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     let min = all.length? Math.min(...all):0;
     let max = all.length? Math.max(...all):1;
-    // Always show y=0 baseline on line charts
-    min = Math.min(min, 0);
-    max = Math.max(max, 0);
+    // Y-range policy: most line charts include y=0 for context,
+    // but the Fiche mini-chart needs a tighter scale to make small variations readable.
+    if(!opts.tightY){
+      min = Math.min(min, 0);
+      max = Math.max(max, 0);
+    }
     let pad = (max-min)*0.08;
     if(!isFinite(pad) || pad<=0) pad = 1;
     let ymin = min - pad;
@@ -1697,26 +1702,73 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   }
 
 
+  
   function summaryForSelection(lic, scope, phase){
-    // Phase- and context-aware summary (used for Focus/Kiviat bottom stats)
-    if(!lic || !PLAYERS[lic]) return {matches:0,wins:0,losses:0,win_rate:null,perfs:0,contres:0,pointres_total:0};
-    const b = buildSegmentBuckets(lic, scope, phase);
+    // Phase- and context-aware summary.
+    // Used for Focus/Kiviat bottom stats AND the player "Fiche" tiles.
+    if(!lic || !PLAYERS[lic]) return {
+      matches:0,wins:0,losses:0,win_rate:null,perfs:0,contres:0,pointres_total:0,
+      diff_sets_total:0, dominance:0, clutch_played:0, clutch_wins:0, clutch_rate:null
+    };
+
+    const p = PLAYERS[lic];
+    const arr = (p && p.timeline && p.timeline[scope]) ? p.timeline[scope] : [];
+
+    // Apply the same context filters as charts (better/worse/close) + phase filter.
+    const ctxBetter = $ctxBetter && $ctxBetter.checked;
+    const ctxWorse  = $ctxWorse  && $ctxWorse.checked;
+    const ctxClose  = $ctxClose  && $ctxClose.checked;
+    const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
+
+    const keepRow = (x)=>{
+      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      const d = Number(x.diff_pts||0);
+      if(!wantAllRel){
+        if(ctxBetter && !(d < 0)) return false;
+        if(ctxWorse  && !(d > 0)) return false;
+      }
+      if(ctxClose && !x.close_match) return false;
+      return true;
+    };
+
     let m=0,w=0,l=0,per=0,con=0,pts=0;
-    for(const k of (b.keyOrder||[])){
-      const o = b.buckets.get(k);
-      if(!o) continue;
-      m += Number(o.matches||0);
-      w += Number(o.wins||0);
-      l += Number(o.losses||0);
-      per += Number(o.perfs||0);
-      con += Number(o.contres||0);
-      pts += Number(o.pointres_total||0);
+    let ds=0, clutchP=0, clutchW=0;
+
+    for(const r of (arr||[])){
+      if(!keepRow(r)) continue;
+      m += 1;
+      const win = r.win ? 1 : 0;
+      w += win;
+      per += (r.perf ? 1 : 0);
+      con += (r.contre ? 1 : 0);
+      pts += Number(r.pointres||0);
+
+      const sf = Number(r.sets_for||0);
+      const sa = Number(r.sets_against||0);
+      if(isFinite(sf) && isFinite(sa)){
+        ds += (sf - sa);
+        const totalSets = sf + sa;
+        if(totalSets === 5){
+          clutchP += 1;
+          clutchW += win;
+        }
+      }
     }
+    l = m - w;
     const wr = m ? (w/m) : null;
-    return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
+    const dom = m ? (ds / m) : 0;
+    const clutchRate = clutchP ? (clutchW / clutchP) : null;
+
+    return {
+      matches:m, wins:w, losses:l, win_rate:wr,
+      perfs:per, contres:con, pointres_total:pts,
+      diff_sets_total:ds, dominance:dom,
+      clutch_played:clutchP, clutch_wins:clutchW, clutch_rate:clutchRate
+    };
   }
 
   function segmentLabels(scope, phase, lics){
+(scope, phase, lics){
     lics = (lics && lics.length) ? lics : selected;
     const lic = lics[0];
     if(!lic || !PLAYERS[lic]) return [];
@@ -1819,7 +1871,9 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
     function subText(p, lic){
       if(!p) return '';
-      const s = p.summary || {};
+      const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+    const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
+    const s = summaryForSelection(lic, scopeSel, phaseSel);
       const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
       return `${m} matchs · ${w} V · ${l} D`;
     }

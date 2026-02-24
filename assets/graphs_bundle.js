@@ -1768,7 +1768,6 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   }
 
   function segmentLabels(scope, phase, lics){
-(scope, phase, lics){
     lics = (lics && lics.length) ? lics : selected;
     const lic = lics[0];
     if(!lic || !PLAYERS[lic]) return [];

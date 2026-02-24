@@ -1575,54 +1575,65 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     // Dynamic radius: keep axis labels inside the canvas on small screens.
     // We compute how much "label room" we need on each side, then shrink R if necessary.
     ctx.font='13px system-ui';
+    // Dynamic radius: compute the largest R that keeps ALL axis labels inside the canvas.
+    // This avoids cropped labels on narrow mobile Focus view.
     (function(){
       const pad = 8;
-      const margin = 10;
-      let leftExtra=0, rightExtra=0, topExtra=0, bottomExtra=0;
+      const margin = 6;
+      const fontPx = 13;
+      const ascent = 12;   // approx
+      const descent = 4;   // approx
+
       const n = axes.length;
-      const th = 13; // font px (approx)
-      for(let i=0;i<n;i++){
+
+      function labelBox(i, Rtest){
         const ang = -Math.PI/2 + (Math.PI*2)*(i/n);
-        const c = Math.cos(ang), s = Math.sin(ang);
+        const x = cx + Rtest*Math.cos(ang);
+        const y = cy + Rtest*Math.sin(ang);
         const lbl = axes[i].label || '';
         const tw = ctx.measureText(lbl).width;
 
-        // Horizontal room
-        if(c > 0.25) rightExtra = Math.max(rightExtra, tw + pad);
-        else if(c < -0.25) leftExtra = Math.max(leftExtra, tw + pad);
-        else {
-          // near vertical: still some horizontal room
-          leftExtra = Math.max(leftExtra, tw*0.45);
-          rightExtra = Math.max(rightExtra, tw*0.45);
-        }
+        // Same placement logic as the actual drawing code (but WITHOUT clamping)
+        const tx = x + (x>cx ? pad : -(tw+pad));
+        const ty = y + (y>cy ? 16 : -6);
 
-        // Vertical room
-        if(s > 0.25) bottomExtra = Math.max(bottomExtra, th + pad);
-        else if(s < -0.25) topExtra = Math.max(topExtra, th + pad);
-        else {
-          topExtra = Math.max(topExtra, th*0.45);
-          bottomExtra = Math.max(bottomExtra, th*0.45);
-        }
-
-        // Corners: add a bit more safety
-        if(Math.abs(c) > 0.6 && Math.abs(s) > 0.6){
-          if(c > 0) rightExtra = Math.max(rightExtra, tw + pad);
-          else leftExtra = Math.max(leftExtra, tw + pad);
-          if(s > 0) bottomExtra = Math.max(bottomExtra, th + pad);
-          else topExtra = Math.max(topExtra, th + pad);
-        }
+        const left = tx;
+        const right = tx + tw;
+        const top = ty - ascent;
+        const bottom = ty + descent;
+        return {left,right,top,bottom};
       }
 
-      const maxR = Math.min(
-        (cx - (margin + leftExtra)),
-        ((w - cx) - (margin + rightExtra)),
-        (cy - (margin + topExtra)),
-        ((h - cy) - (margin + bottomExtra))
-      );
-
-      if(isFinite(maxR) && maxR > 40){
-        R = Math.min(R0, maxR);
+      function fits(Rtest){
+        for(let i=0;i<n;i++){
+          const b = labelBox(i, Rtest);
+          if(b.left < margin) return false;
+          if(b.right > (w - margin)) return false;
+          if(b.top < margin) return false;
+          if(b.bottom > (h - margin)) return false;
+        }
+        return true;
       }
+
+      // Upper bound: keep some space for title/top padding
+      let hi = Math.min(cx, w-cx, cy, h-cy) - 18;
+      if(!isFinite(hi) || hi < 40) return;
+
+      // Start from the intended radius, but never exceed hi.
+      hi = Math.min(hi, R0);
+      let lo = 20;
+      let best = lo;
+
+      // If even the smallest doesn't fit, keep R as-is and let clamp handle it.
+      if(!fits(lo)) return;
+
+      // Binary search for max fitting R.
+      for(let it=0; it<18; it++){
+        const mid = (lo + hi) / 2;
+        if(fits(mid)){ best = mid; lo = mid; }
+        else { hi = mid; }
+      }
+      R = Math.max(40, best);
     })();
 
     if(!isMobile && (bgA || bgB)){

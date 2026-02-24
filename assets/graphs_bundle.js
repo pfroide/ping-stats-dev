@@ -1564,13 +1564,67 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   function drawRadar(a, b, axes, bgA, bgB){
     const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
-    const R=Math.min(w,h)*0.38;
+    let R0=Math.min(w,h)*0.38;
+    let R=R0;
     ctx.clearRect(0,0,w,h);
 
     // Background portraits (desktop/tablet only). Keep mobile ultra-readable.
     const dpr = (typeof window!=='undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
     const cssW = w / dpr;
     const isMobile = cssW < 620;
+    // Dynamic radius: keep axis labels inside the canvas on small screens.
+    // We compute how much "label room" we need on each side, then shrink R if necessary.
+    ctx.font='13px system-ui';
+    (function(){
+      const pad = 8;
+      const margin = 10;
+      let leftExtra=0, rightExtra=0, topExtra=0, bottomExtra=0;
+      const n = axes.length;
+      const th = 13; // font px (approx)
+      for(let i=0;i<n;i++){
+        const ang = -Math.PI/2 + (Math.PI*2)*(i/n);
+        const c = Math.cos(ang), s = Math.sin(ang);
+        const lbl = axes[i].label || '';
+        const tw = ctx.measureText(lbl).width;
+
+        // Horizontal room
+        if(c > 0.25) rightExtra = Math.max(rightExtra, tw + pad);
+        else if(c < -0.25) leftExtra = Math.max(leftExtra, tw + pad);
+        else {
+          // near vertical: still some horizontal room
+          leftExtra = Math.max(leftExtra, tw*0.45);
+          rightExtra = Math.max(rightExtra, tw*0.45);
+        }
+
+        // Vertical room
+        if(s > 0.25) bottomExtra = Math.max(bottomExtra, th + pad);
+        else if(s < -0.25) topExtra = Math.max(topExtra, th + pad);
+        else {
+          topExtra = Math.max(topExtra, th*0.45);
+          bottomExtra = Math.max(bottomExtra, th*0.45);
+        }
+
+        // Corners: add a bit more safety
+        if(Math.abs(c) > 0.6 && Math.abs(s) > 0.6){
+          if(c > 0) rightExtra = Math.max(rightExtra, tw + pad);
+          else leftExtra = Math.max(leftExtra, tw + pad);
+          if(s > 0) bottomExtra = Math.max(bottomExtra, th + pad);
+          else topExtra = Math.max(topExtra, th + pad);
+        }
+      }
+
+      const maxR = Math.min(
+        (cx - (margin + leftExtra)),
+        ((w - cx) - (margin + rightExtra)),
+        (cy - (margin + topExtra)),
+        ((h - cy) - (margin + bottomExtra))
+      );
+
+      if(isFinite(maxR) && maxR > 40){
+        R = Math.min(R0, maxR);
+      }
+    })();
+
     if(!isMobile && (bgA || bgB)){
       const gap = R * 0.95;
       const leftW  = Math.max(0, Math.floor(cx - gap));
@@ -1608,8 +1662,11 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
       const lbl=axes[i].label;
       const pad = 8;
       const tw = ctx.measureText(lbl).width;
-      const tx = x + (x>cx ? pad : -(tw+pad));
-      const ty = y + (y>cy ? 16 : -6);
+      let tx = x + (x>cx ? pad : -(tw+pad));
+      let ty = y + (y>cy ? 16 : -6);
+      // Clamp labels to canvas bounds (important on narrow mobile screens in Focus)
+      tx = Math.max(6, Math.min(tx, w - tw - 6));
+      ty = Math.max(14, Math.min(ty, h - 6));
       ctx.fillText(lbl, tx, ty);
     }
     function poly(vals, label, color){

@@ -1042,7 +1042,8 @@ root.appendChild(style);
     } finally { ctx.restore(); }
 }
 
-  function drawLine(labels, series){
+  function drawLine(labels, series, opts){
+    opts = opts || {};
     const w=_cw, h=_ch;
     const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];

@@ -13,6 +13,11 @@
   const style = document.createElement('style');
   style.textContent = `
     :host{ all: initial; }
+    /* Prevent mobile horizontal drift when layout mode changes (mini-graphs / focus).
+       Without border-box + overflow-x clamp, some fixed/auto-fit grids can spill a few pixels
+       and the whole shadow root becomes horizontally scrollable ("site décentré vers la droite"). */
+    :host, .g-card{ display:block; max-width:100%; }
+    *,*::before,*::after{ box-sizing:border-box; }
     .g-card{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color: #e6e9ef; }
     .g-muted{ color:#9aa4b2; }
     .g-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
@@ -96,7 +101,8 @@
     }
 
     /* Focus mode (mobile-first fullscreen) */
-    .g-card.g-focus{ position:fixed; inset:0; z-index:9999; margin:0; border-radius:0; border:none; background:#0b1220; }
+    .g-card{ overflow-x:hidden; }
+    .g-card.g-focus{ position:fixed; inset:0; z-index:9999; margin:0; border-radius:0; border:none; background:#0b1220; overflow-x:hidden; }
     .g-card.g-focus .g-row{ padding:4px 10px; }
     .g-card.g-focus .g-more{ display:none !important; }
     .g-card.g-focus .g-title{ margin-top:8px; }
@@ -108,6 +114,9 @@
 .g-card.g-focus .g-legend,
 .g-card.g-focus #gMulti,
 .g-card.g-focus #gCompareCards{ max-width:1200px; margin-left:auto; margin-right:auto; }
+
+    /* Center + clamp mini-graphs container (prevents any overflow on narrow viewports). */
+    #gMulti{ width:100%; max-width:980px; margin-left:auto; margin-right:auto; }
 .g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
     .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
@@ -395,8 +404,13 @@ root.appendChild(style);
     const rw = Math.floor(r.width || canvas.clientWidth || 0);
     const rh = Math.floor(r.height || canvas.clientHeight || 0);
     // Do NOT override CSS size (keeps responsive layout stable on mobile)
-    const w = (rw>0 ? rw : (minW||320));
-    const h = (rh>0 ? rh : (minH||240));
+    // When the canvas is temporarily hidden (display:none), rw/rh become 0.
+    // If we resize the backing buffer to a tiny fallback and then show it again,
+    // the browser stretches it -> blur. Prefer last known CSS size when available.
+    const prevW = (canvas.__cw && isFinite(canvas.__cw) && canvas.__cw>0) ? canvas.__cw : 0;
+    const prevH = (canvas.__ch && isFinite(canvas.__ch) && canvas.__ch>0) ? canvas.__ch : 0;
+    const w = (rw>0 ? rw : (prevW>0 ? prevW : (minW||320)));
+    const h = (rh>0 ? rh : (prevH>0 ? prevH : (minH||240)));
     const dpr = Math.max(1, (window.devicePixelRatio || 1));
     const pw = Math.max(1, Math.floor(w * dpr));
     const ph = Math.max(1, Math.floor(h * dpr));
@@ -1473,13 +1487,20 @@ root.appendChild(style);
       }
     }
 
+    // Bar geometry: previous version could compute a groupW larger than the available slot,
+    // so bars spilled outside the plot area and value labels looked off-center.
     const k = Math.max(1, series.length);
-    const groupW = Math.max(10, Math.min(44, (right-left)/(n*1.25)));
-    const barW = Math.max(6, Math.floor((groupW-6)/k));
+    const slotW = Math.max(1, (right-left) / Math.max(1,n));
+    const groupW = Math.max(10, Math.min(52, slotW * 0.86));
+    const gap = 2;
+    const inner = Math.max(6, groupW - gap*(k+1));
+    const barW = Math.max(4, Math.floor(inner / k));
     const baseY = y(0);
 
     for(let i=0;i<n;i++){
-      const gx = x(i) - (groupW/2);
+      // Clamp group so it never crosses plot bounds
+      let gx = x(i) - (groupW/2);
+      gx = Math.max(left, Math.min(right - groupW, gx));
       for(let j=0;j<series.length;j++){
         const s=series[j];
         const v=s.values[i];
@@ -1487,16 +1508,22 @@ root.appendChild(style);
         const hue = hashHue(s.label);
         const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.78)`;
         ctx2.fillStyle = col;
-        const bx = gx + 3 + j*barW;
+        const bx = gx + gap + j*(barW + gap);
         const yv = y(v);
         const bh = Math.abs(baseY - yv);
         const by = v>=0 ? yv : baseY;
-        ctx2.fillRect(bx, by, barW-2, Math.max(1,bh));
+        ctx2.fillRect(bx, by, barW, Math.max(1,bh));
         // value label (few only to avoid clutter)
         if(n<=10 || i===0 || i===n-1){
+          // Center the label on the bar
+          ctx2.save();
           ctx2.fillStyle = col;
           ctx2.font='600 11px system-ui';
-          ctx2.fillText(fmtNum(v), bx, (v>=0? by-4 : by+bh+12));
+          ctx2.textAlign = 'center';
+          const tx = bx + barW/2;
+          const ty = (v>=0 ? (by-4) : (by+bh+12));
+          ctx2.fillText(fmtNum(v), tx, ty);
+          ctx2.restore();
         }
       }
     }
@@ -1822,10 +1849,6 @@ async function render(opts){
     const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
     updateFocusHeader(aLic, bLic);
-    syncCanvasSize();
-    // Hard reset to avoid state leakage (colors/alpha/filter) across UI mode changes (Focus/Fiche)
-    resetCtx(ctx, _dpr);
-    ctx.clearRect(0,0,(_cw||1),(_ch||1));
     // Small fade to make transitions less harsh on mobile
     try{
       $canvas.style.transition = 'opacity 180ms ease';
@@ -1834,11 +1857,24 @@ async function render(opts){
     const mode = $mode.value;
     setMetricOptions();
 
-    // default visibility
+    // default visibility (important: make canvas visible BEFORE measuring it)
     $multi.style.display = 'none';
     $canvas.style.display = 'block';
     if($legend) $legend.innerHTML = '';
     if($compareCards){ $compareCards.style.display = 'none'; $compareCards.innerHTML = ''; }
+
+    // Sync size AFTER visibility changes; otherwise getBoundingClientRect() can be 0 -> blur.
+    syncCanvasSize();
+    // Hard reset to avoid state leakage (colors/alpha/filter) across UI mode changes (Focus/Fiche)
+    resetCtx(ctx, _dpr);
+    ctx.clearRect(0,0,(_cw||1),(_ch||1));
+
+    // If we still couldn't measure correctly (common right after switching view/focus on mobile),
+    // retry exactly once on the next frame.
+    if((!_cw || _cw < 120 || !_ch || _ch < 120) && !opts._retry){
+      requestAnimationFrame(()=>render(Object.assign({}, opts, {_retry:true})));
+      return;
+    }
 
     // view controls enabled only on line modes
     const isLineMode = (mode==='segments' || mode==='timeline' || mode==='expected');

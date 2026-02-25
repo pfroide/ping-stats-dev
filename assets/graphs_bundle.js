@@ -39,8 +39,8 @@
     .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
     .g-legend{ display:flex; flex-wrap:wrap; gap:8px; width:100%; margin:8px 0 0; justify-content:center; }
 
-.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.g-table{ width:100%; border-collapse:separate; border-spacing:0; min-width:520px; }
+.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:hidden; }
+.g-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
 .g-table th,.g-table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; white-space:nowrap; }
 .g-table th{ position:sticky; top:0; background:rgba(12,18,30,0.92); backdrop-filter: blur(6px); text-align:left; z-index:2; }
 .g-table tr:hover td{ background:rgba(255,255,255,0.03); }
@@ -1031,7 +1031,54 @@ root.appendChild(style);
   }
 
 
-  function hashHue(s){
+  
+  function buildRadarTable(axes, aSeries, bSeries){
+    if(!$tableWrap) return;
+    const cols = [];
+    if(aSeries) cols.push({key:'a', label:aSeries.label||'A', color:aSeries.color||COLOR_A, values:aSeries.values||[]});
+    if(bSeries) cols.push({key:'b', label:bSeries.label||'B', color:bSeries.color||COLOR_B, values:bSeries.values||[]});
+
+    const cssW = (typeof window!=='undefined' && window.innerWidth) ? window.innerWidth : 9999;
+    const compactHdr = (cssW < 520);
+
+    let html = '<table class="g-table"><thead><tr><th>Stat</th>';
+    for(let ci=0; ci<cols.length; ci++){
+      const full = cols[ci].label;
+      const short = compactHdr ? (ci===0?'A':'B') : full;
+      const titleAttr = compactHdr ? ` title="${esc(full)}"` : '';
+      html += `<th class="num"${titleAttr}>${esc(short)}</th>`;
+    }
+    if(cols.length===2){
+      html += '<th class="num">Δ</th>';
+    }
+    html += '</tr></thead><tbody>';
+
+    for(let i=0;i<axes.length;i++){
+      const ax = axes[i];
+      const name = ax && (ax.label||ax.key) ? (ax.label||ax.key) : ('Axe '+(i+1));
+      const va = cols[0] ? cols[0].values[i] : null;
+      const vb = cols[1] ? cols[1].values[i] : null;
+      html += `<tr><td>${esc(name)}</td>`;
+      if(cols[0]){
+        html += `<td class="num">${(va==null||Number.isNaN(va))?'—':esc(fmtNum(va*100))+'%'}</td>`;
+      }
+      if(cols[1]){
+        html += `<td class="num">${(vb==null||Number.isNaN(vb))?'—':esc(fmtNum(vb*100))+'%'}</td>`;
+      }
+      if(cols.length===2){
+        let dv = null;
+        if(va!=null && vb!=null && !Number.isNaN(va) && !Number.isNaN(vb)) dv = va - vb;
+        const cls = 'num ' + heatClass(dv, 1e-6);
+        html += `<td class="${cls}">${(dv==null||Number.isNaN(dv))?'—':esc(fmtNum(dv*100))+'%'}</td>`;
+      }
+      html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    $tableWrap.innerHTML = html;
+  }
+
+function hashHue(s){
     s = String(s||'');
     let h=0;
     for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))>>>0;
@@ -2029,8 +2076,12 @@ async function render(opts){
       }
 
       setTitleText(`Kiviat profil — ${phaseLbl}`);
-      renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
-      drawRadar(aSeries, bSeries, axes, bgA, bgB);
+      if(isTableMode){
+        buildRadarTable(axes, aSeries, bSeries);
+      }else{
+        renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
+        drawRadar(aSeries, bSeries, axes, bgA, bgB);
+      }
       $info.textContent = 'Kiviat: ' + aSeries.label + ' vs ' + (bSeries? bSeries.label : '—');
 
       // A/B synthesis cards under the kiviat (mobile-friendly)

@@ -2648,11 +2648,9 @@ async function render(opts){
     }
 
     async function buildCompositeRadar(){
-      // Build a composite PNG for the radar view (title + legend + radar + stats)
-      // Do not rely on $canvas size when hidden (mini-graphs / focus), compute size from host.
-      const hostRect = (host && host.getBoundingClientRect) ? host.getBoundingClientRect() : {width:0,height:0};
-      const wCss = Math.max(320, Math.min(980, Math.floor((hostRect.width || window.innerWidth || 980) - 24)));
-      const hCss = 420; // radar plotting height (CSS px)
+      const base = $canvas;
+      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
+      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 420);
       const pad = 12;
       const headerH = 54;
       const legendH = 34;
@@ -2661,20 +2659,19 @@ async function render(opts){
       const aLic = selected[0] || '';
       const bLic = ($compare && $compare.value) ? $compare.value : '';
       const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
-      const phaseKey = (pv==='1' || pv==='p1') ? 'p1' : ((pv==='2' || pv==='p2') ? 'p2' : 'all');
       const phaseSel = (pv==='1' || pv==='p1') ? '1' : ((pv==='2' || pv==='p2') ? '2' : 'all');
       const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
 
       const out = document.createElement('canvas');
       const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
-      out.width = Math.floor(wCss * dpr);
-      out.height = Math.floor((headerH + legendH + pad + hCss + statsH) * dpr);
+      out.width = Math.floor(w * dpr);
+      out.height = Math.floor((headerH + legendH + pad + h + statsH) * dpr);
       const c = out.getContext('2d');
       c.setTransform(dpr,0,0,dpr,0,0);
 
       // bg
       c.fillStyle = '#0b1220';
-      c.fillRect(0,0,wCss,(headerH + legendH + pad + hCss + statsH));
+      c.fillRect(0,0,w,(headerH + legendH + pad + h + statsH));
 
       // title
       const title = ($title && ($title.textContent||'').trim()) ? $title.textContent.trim() : 'Kiviat profil';
@@ -2683,173 +2680,25 @@ async function render(opts){
       c.textBaseline = 'middle';
       c.fillText(title, pad, Math.floor(headerH/2));
 
-      // legend (from current legend DOM if present, otherwise fallback on A/B labels)
+      // legend (HTML -> canvas)
       c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
       c.fillStyle = 'rgba(255,255,255,0.80)';
       let lx = pad, ly = headerH + 8;
       const items = $legend ? Array.from($legend.querySelectorAll('.it')) : [];
-      if(items.length){
-        for(const it of items){
-          const sw = it.querySelector('.sw');
-          const label = (it.textContent||'').trim();
-          const col = sw ? (sw.style.background || '#9aa4b2') : '#9aa4b2';
-          c.fillStyle = col;
-          c.fillRect(lx, ly+4, 12, 12);
-          c.fillStyle = 'rgba(255,255,255,0.82)';
-          c.fillText(label, lx+16, ly+14);
-          lx += 16 + c.measureText(label).width + 18;
-          if(lx > wCss - 220){ lx = pad; ly += 18; }
-        }
-      }else{
-        const aName = (PLAYERS[aLic] && (PLAYERS[aLic].name||aLic)) || aLic || 'A';
-        const bName = (bLic && PLAYERS[bLic] && (PLAYERS[bLic].name||bLic)) ? (PLAYERS[bLic].name||bLic) : (bLic?bLic:'Club');
-        const fallbackItems = [
-          {label:aName, color: COLOR_A},
-          {label:bLic?bName:'Club', color: bLic?COLOR_B:COLOR_CLUB},
-        ];
-        for(const it of fallbackItems){
-          c.fillStyle = it.color;
-          c.fillRect(lx, ly+4, 12, 12);
-          c.fillStyle = 'rgba(255,255,255,0.82)';
-          c.fillText(it.label, lx+16, ly+14);
-          lx += 16 + c.measureText(it.label).width + 18;
-        }
+      for(const it of items){
+        const sw = it.querySelector('.sw');
+        const label = (it.textContent||'').trim();
+        const col = sw ? (sw.style.background || '#9aa4b2') : '#9aa4b2';
+        c.fillStyle = col;
+        c.fillRect(lx, ly+4, 12, 12);
+        c.fillStyle = 'rgba(255,255,255,0.82)';
+        c.fillText(label, lx+16, ly+14);
+        lx += 16 + c.measureText(label).width + 18;
+        if(lx > w - 220){ lx = pad; ly += 18; }
       }
 
-      // Build radar data directly (do not depend on visible $canvas buffer)
-      const axes = (MANIFEST.meta && MANIFEST.meta.radar_axes) || [];
-      const aNorm = (aLic && PLAYERS[aLic] && PLAYERS[aLic].radar && PLAYERS[aLic].radar[phaseKey] && PLAYERS[aLic].radar[phaseKey].norm) ? PLAYERS[aLic].radar[phaseKey].norm : null;
-      let bNorm = null;
-      if(bLic && PLAYERS[bLic] && PLAYERS[bLic].radar && PLAYERS[bLic].radar[phaseKey] && PLAYERS[bLic].radar[phaseKey].norm){
-        bNorm = PLAYERS[bLic].radar[phaseKey].norm;
-      }else if(CLUB && CLUB.radar && CLUB.radar[phaseKey] && CLUB.radar[phaseKey].norm){
-        bNorm = CLUB.radar[phaseKey].norm;
-      }
-      const aVals = axes.map(ax => (aNorm && aNorm[ax.key]) ?? 0);
-      const bVals = axes.map(ax => (bNorm && bNorm[ax.key]) ?? 0);
-
-      function drawRadarToCanvas(cv, axes, aVals, bVals, colA, colB){
-        const w = cv.width, h = cv.height;
-        const ctx = cv.getContext('2d');
-        ctx.clearRect(0,0,w,h);
-        ctx.save();
-        // background panel
-        ctx.fillStyle = 'rgba(9,14,25,0.62)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.lineWidth = 1;
-        roundRectPath(ctx, 6, 6, w-12, h-12, 16);
-        ctx.fill(); ctx.stroke();
-
-        const cx = w/2, cy = h/2 + 10;
-        // dynamic radius to keep labels inside
-        const pad = 10;
-        const font = (w < 420 ? 14 : 16);
-        ctx.font = `${font}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-        const N = Math.max(3, axes.length||0);
-        let Rmax = Math.min(w, h) * 0.40;
-        // exact fit check using actual bounding boxes when available
-        function textBox(label){
-          const m = ctx.measureText(label);
-          const asc = (m.actualBoundingBoxAscent!=null) ? m.actualBoundingBoxAscent : font*0.75;
-          const desc = (m.actualBoundingBoxDescent!=null) ? m.actualBoundingBoxDescent : font*0.25;
-          return {w:m.width, h:(asc+desc), asc, desc};
-        }
-        const theta0 = -Math.PI/2;
-        function fits(R){
-          let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
-          for(let i=0;i<N;i++){
-            const ang = theta0 + i*2*Math.PI/N;
-            const x = cx + Math.cos(ang)*(R+14);
-            const y = cy + Math.sin(ang)*(R+14);
-            const label = (axes[i] && (axes[i].label||axes[i].name||axes[i].key)) ? (axes[i].label||axes[i].name||axes[i].key) : `S${i+1}`;
-            const tb = textBox(label);
-            let tx = x + (x>cx ? pad : -(tb.w+pad));
-            let ty = y - (tb.asc/2);
-            minX = Math.min(minX, tx);
-            minY = Math.min(minY, ty - tb.desc);
-            maxX = Math.max(maxX, tx + tb.w);
-            maxY = Math.max(maxY, ty + tb.asc);
-          }
-          const m=8;
-          return (minX>=m && minY>=m && maxX<=w-m && maxY<=h-m);
-        }
-        // binary search R
-        let lo = 20, hi = Math.min(Rmax, Math.min(w,h)*0.48);
-        for(let k=0;k<18;k++){
-          const mid = (lo+hi)/2;
-          if(fits(mid)) lo=mid; else hi=mid;
-        }
-        const R = lo;
-
-        // grid rings
-        ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-        ctx.lineWidth = 1;
-        for(let r=1;r<=4;r++){
-          const rr = R*(r/4);
-          ctx.beginPath();
-          for(let i=0;i<N;i++){
-            const ang = theta0 + i*2*Math.PI/N;
-            const x = cx + Math.cos(ang)*rr;
-            const y = cy + Math.sin(ang)*rr;
-            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-          }
-          ctx.closePath();
-          ctx.stroke();
-        }
-        // axes lines
-        for(let i=0;i<N;i++){
-          const ang = theta0 + i*2*Math.PI/N;
-          ctx.beginPath();
-          ctx.moveTo(cx,cy);
-          ctx.lineTo(cx + Math.cos(ang)*R, cy + Math.sin(ang)*R);
-          ctx.stroke();
-        }
-
-        function poly(vals, stroke, fill){
-          ctx.beginPath();
-          for(let i=0;i<N;i++){
-            const v = Math.max(0, Math.min(1, vals[i]||0));
-            const ang = theta0 + i*2*Math.PI/N;
-            const x = cx + Math.cos(ang)*R*v;
-            const y = cy + Math.sin(ang)*R*v;
-            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-          }
-          ctx.closePath();
-          ctx.fillStyle = fill;
-          ctx.strokeStyle = stroke;
-          ctx.lineWidth = 4;
-          ctx.fill();
-          ctx.stroke();
-        }
-
-        poly(aVals, colA, 'rgba(0,255,140,0.12)');
-        if(bVals && bVals.length) poly(bVals, colB, 'rgba(255,80,80,0.12)');
-
-        // labels
-        ctx.fillStyle = 'rgba(255,255,255,0.72)';
-        ctx.font = `${font}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-        for(let i=0;i<N;i++){
-          const ang = theta0 + i*2*Math.PI/N;
-          const x = cx + Math.cos(ang)*(R+14);
-          const y = cy + Math.sin(ang)*(R+14);
-          const label = (axes[i] && (axes[i].label||axes[i].name||axes[i].key)) ? (axes[i].label||axes[i].name||axes[i].key) : `S${i+1}`;
-          const tb = textBox(label);
-          let tx = x + (x>cx ? pad : -(tb.w+pad));
-          let ty = y + 5;
-          // clamp as safety
-          tx = Math.max(6, Math.min(w-6-tb.w, tx));
-          ty = Math.max(6+tb.asc, Math.min(h-6, ty));
-          ctx.fillText(label, tx, ty);
-        }
-
-        ctx.restore();
-      }
-
-      const graphCv = document.createElement('canvas');
-      graphCv.width = wCss;
-      graphCv.height = hCss;
-      drawRadarToCanvas(graphCv, axes, aVals, bVals, COLOR_A, (bLic?COLOR_B:COLOR_CLUB));
-      c.drawImage(graphCv, 0, headerH + legendH + pad, wCss, hCss);
+      // graph
+      c.drawImage(base, 0, headerH + legendH + pad, w, h);
 
       // stats cards (phase-aware)
       const sa = summaryForSelection(aLic, scopeSel, phaseSel);
@@ -2859,8 +2708,8 @@ async function render(opts){
       const fmtInt = (x)=> (x==null||!isFinite(x)) ? '—' : String(Math.round(x));
       const fmtPts = (x)=> (x==null||!isFinite(x)) ? '—' : fmtNum(x);
 
-      const sY = headerH + legendH + pad + hCss + 14;
-      const cardW = Math.floor((wCss - pad*4)/3);
+      const sY = headerH + legendH + pad + h + 14;
+      const cardW = Math.floor((w - pad*4)/3);
       const cardH = 86;
       const cards = [
         {t:'Tx victoire', a: fmtPct(sa.win_rate), b: sb?fmtPct(sb.win_rate):'—', d: sb?(`Δ ${fmtPct((sa.win_rate||0)-(sb.win_rate||0))}`):''},
@@ -2891,7 +2740,7 @@ async function render(opts){
         c.fillStyle = 'rgba(255,255,255,0.65)';
         c.font = '800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         c.fillText('vs', x+10 + c.measureText(cc.a).width + 10, y+36);
-        c.fillStyle = (bLic?COLOR_B:COLOR_CLUB);
+        c.fillStyle = COLOR_B;
         c.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         c.fillText(cc.b, x+10 + c.measureText(cc.a).width + 34, y+34);
 
@@ -2904,7 +2753,6 @@ async function render(opts){
 
       return out;
     }
-
 
 
     // If we are in mini-graphs view, keep current behavior (multiple downloads)

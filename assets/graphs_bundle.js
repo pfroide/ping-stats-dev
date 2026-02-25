@@ -38,6 +38,18 @@
     .g-tip b{ font-weight:700; }
     .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
     .g-legend{ display:flex; flex-wrap:wrap; gap:8px; width:100%; margin:8px 0 0; justify-content:center; }
+
+.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.g-table{ width:100%; border-collapse:separate; border-spacing:0; min-width:520px; }
+.g-table th,.g-table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; white-space:nowrap; }
+.g-table th{ position:sticky; top:0; background:rgba(12,18,30,0.92); backdrop-filter: blur(6px); text-align:left; z-index:2; }
+.g-table tr:hover td{ background:rgba(255,255,255,0.03); }
+.g-table .num{ text-align:right; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px){
+  .g-table{ min-width:440px; }
+  .g-table th,.g-table td{ padding:9px 10px; font-size:13px; }
+}
+
     .g-legend .it{ display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); font-size:12px; }
     .g-legend .sw{ width:10px; height:10px; border-radius:3px; }
     .g-kpi-card{ border:1px solid #263043; border-radius:14px; background:rgba(255,255,255,0.04); padding:10px 12px; }
@@ -225,6 +237,10 @@ root.appendChild(style);
           <option value="overlay">Vue: superposée</option>
           <option value="multiples">Vue: mini-graphs</option>
         </select>
+        <select id="gDisplay" class="g-select">
+          <option value="charts">Affichage: graphiques</option>
+          <option value="tables">Affichage: tableaux</option>
+        </select>
         <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
         <button id="gSheet" class="g-btn" type="button">Fiche</button>
       </div>
@@ -293,6 +309,7 @@ root.appendChild(style);
       <div id="gTip" class="g-tip" style="display:none"></div>
       <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
       <div id="gLegend" class="g-legend"></div>
+      <div id="gTableWrap" class="g-tablewrap" style="display:none"></div>
       <div id="gCompareCards" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;"></div>
       <div id="gMulti" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; max-width:980px;"></div>
       <div class="g-muted" id="gInfo"></div>
@@ -348,6 +365,7 @@ root.appendChild(style);
   const $phase = el('gPhase');
   const $compare = el('gCompare');
   const $view = el('gView');
+  const $display = el('gDisplay');
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
   const $sheetBtn = el('gSheet');
@@ -393,6 +411,7 @@ root.appendChild(style);
   const $tip = el('gTip');
   const $canvas = el('gCanvas');
   const $legend = el('gLegend');
+  const $tableWrap = el('gTableWrap');
   const $multi = el('gMulti');
   const $info = el('gInfo');
   const ctx = $canvas.getContext('2d');
@@ -465,9 +484,7 @@ root.appendChild(style);
     if(!lic) return;
     const p = PLAYERS[lic];
     if(!p) return;
-    const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
-    const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
-    const s = summaryForSelection(lic, scopeSel, phaseSel);
+    const s = p.summary || {};
     $sheetName.textContent = (p.name || lic);
     const m = Number(s.matches||0);
     const w = Number(s.wins||0);
@@ -549,7 +566,7 @@ root.appendChild(style);
       }
       push(firstIdx); push(lastIdx); push(minIdx); push(maxIdx);
 
-      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs, tightY:true});
+      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs});
 
       // details table (match by match)
       const rows = (tl || []).slice().reverse().slice(0, 60);
@@ -926,6 +943,36 @@ root.appendChild(style);
     if($focusTitle && wrap.classList.contains('g-focus')) $focusTitle.textContent = (t || '');
   }
 
+  function renderNumericTable(bundle){
+    if(!$tableWrap) return;
+    if(!bundle || !bundle.labels || !bundle.series || !bundle.series.length){
+      $tableWrap.innerHTML = '';
+      return;
+    }
+
+    const labels = bundle.labels;
+    const series = bundle.series;
+
+    // Build header: Label + each series label
+    let html = '<table class="g-table"><thead><tr><th>Période</th>';
+    for(const s of series){
+      html += `<th class="num">${esc(s.label||'')}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+
+    for(let i=0;i<labels.length;i++){
+      html += `<tr><td>${esc(labels[i])}</td>`;
+      for(const s of series){
+        const v = (s.values && i < s.values.length) ? s.values[i] : null;
+        html += `<td class="num">${(v==null || Number.isNaN(v)) ? '—' : esc(fmtNum(v))}</td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    $tableWrap.innerHTML = html;
+  }
+
+
   function hashHue(s){
     s = String(s||'');
     let h=0;
@@ -1042,20 +1089,16 @@ root.appendChild(style);
     } finally { ctx.restore(); }
 }
 
-  function drawLine(labels, series, opts){
-    opts = opts || {};
+  function drawLine(labels, series){
     const w=_cw, h=_ch;
     const left=54, top=26, right=w-12, bottom=h-54;
     const all=[];
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     let min = all.length? Math.min(...all):0;
     let max = all.length? Math.max(...all):1;
-    // Y-range policy: most line charts include y=0 for context,
-    // but the Fiche mini-chart needs a tighter scale to make small variations readable.
-    if(!opts.tightY){
-      min = Math.min(min, 0);
-      max = Math.max(max, 0);
-    }
+    // Always show y=0 baseline on line charts
+    min = Math.min(min, 0);
+    max = Math.max(max, 0);
     let pad = (max-min)*0.08;
     if(!isFinite(pad) || pad<=0) pad = 1;
     let ymin = min - pad;
@@ -1334,14 +1377,10 @@ root.appendChild(style);
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     let min = all.length? Math.min(...all):0;
     let max = all.length? Math.max(...all):1;
-    // Y-range policy:
-    // - default: include y=0 for context (requested on line charts)
-    // - fiche: allow a tighter scale (small variations become readable)
-    if(!opts.tightY){
-      min = Math.min(min, 0);
-      max = Math.max(max, 0);
-    }
-    let pad = (max-min)*(opts.tightY ? 0.05 : 0.08);
+    // Always show y=0 baseline on line charts
+    min = Math.min(min, 0);
+    max = Math.max(max, 0);
+    let pad = (max-min)*0.08;
     if(!isFinite(pad) || pad<=0) pad = 1;
     let ymin = min - pad;
     let ymax = max + pad;
@@ -1564,78 +1603,13 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   function drawRadar(a, b, axes, bgA, bgB){
     const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
-    let R0=Math.min(w,h)*0.38;
-    let R=R0;
+    const R=Math.min(w,h)*0.38;
     ctx.clearRect(0,0,w,h);
 
     // Background portraits (desktop/tablet only). Keep mobile ultra-readable.
     const dpr = (typeof window!=='undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
     const cssW = w / dpr;
     const isMobile = cssW < 620;
-    // Dynamic radius: keep axis labels inside the canvas on small screens.
-    // We compute how much "label room" we need on each side, then shrink R if necessary.
-    ctx.font='13px system-ui';
-    // Dynamic radius: compute the largest R that keeps ALL axis labels inside the canvas.
-    // This avoids cropped labels on narrow mobile Focus view.
-    (function(){
-      const pad = 8;
-      const margin = 6;
-      const fontPx = 13;
-      const ascent = 12;   // approx
-      const descent = 4;   // approx
-
-      const n = axes.length;
-
-      function labelBox(i, Rtest){
-        const ang = -Math.PI/2 + (Math.PI*2)*(i/n);
-        const x = cx + Rtest*Math.cos(ang);
-        const y = cy + Rtest*Math.sin(ang);
-        const lbl = axes[i].label || '';
-        const tw = ctx.measureText(lbl).width;
-
-        // Same placement logic as the actual drawing code (but WITHOUT clamping)
-        const tx = x + (x>cx ? pad : -(tw+pad));
-        const ty = y + (y>cy ? 16 : -6);
-
-        const left = tx;
-        const right = tx + tw;
-        const top = ty - ascent;
-        const bottom = ty + descent;
-        return {left,right,top,bottom};
-      }
-
-      function fits(Rtest){
-        for(let i=0;i<n;i++){
-          const b = labelBox(i, Rtest);
-          if(b.left < margin) return false;
-          if(b.right > (w - margin)) return false;
-          if(b.top < margin) return false;
-          if(b.bottom > (h - margin)) return false;
-        }
-        return true;
-      }
-
-      // Upper bound: keep some space for title/top padding
-      let hi = Math.min(cx, w-cx, cy, h-cy) - 18;
-      if(!isFinite(hi) || hi < 40) return;
-
-      // Start from the intended radius, but never exceed hi.
-      hi = Math.min(hi, R0);
-      let lo = 20;
-      let best = lo;
-
-      // If even the smallest doesn't fit, keep R as-is and let clamp handle it.
-      if(!fits(lo)) return;
-
-      // Binary search for max fitting R.
-      for(let it=0; it<18; it++){
-        const mid = (lo + hi) / 2;
-        if(fits(mid)){ best = mid; lo = mid; }
-        else { hi = mid; }
-      }
-      R = Math.max(40, best);
-    })();
-
     if(!isMobile && (bgA || bgB)){
       const gap = R * 0.95;
       const leftW  = Math.max(0, Math.floor(cx - gap));
@@ -1673,11 +1647,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
       const lbl=axes[i].label;
       const pad = 8;
       const tw = ctx.measureText(lbl).width;
-      let tx = x + (x>cx ? pad : -(tw+pad));
-      let ty = y + (y>cy ? 16 : -6);
-      // Clamp labels to canvas bounds (important on narrow mobile screens in Focus)
-      tx = Math.max(6, Math.min(tx, w - tw - 6));
-      ty = Math.max(14, Math.min(ty, h - 6));
+      const tx = x + (x>cx ? pad : -(tw+pad));
+      const ty = y + (y>cy ? 16 : -6);
       ctx.fillText(lbl, tx, ty);
     }
     function poly(vals, label, color){
@@ -1775,69 +1746,23 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   }
 
 
-  
   function summaryForSelection(lic, scope, phase){
-    // Phase- and context-aware summary.
-    // Used for Focus/Kiviat bottom stats AND the player "Fiche" tiles.
-    if(!lic || !PLAYERS[lic]) return {
-      matches:0,wins:0,losses:0,win_rate:null,perfs:0,contres:0,pointres_total:0,
-      diff_sets_total:0, dominance:0, clutch_played:0, clutch_wins:0, clutch_rate:null
-    };
-
-    const p = PLAYERS[lic];
-    const arr = (p && p.timeline && p.timeline[scope]) ? p.timeline[scope] : [];
-
-    // Apply the same context filters as charts (better/worse/close) + phase filter.
-    const ctxBetter = $ctxBetter && $ctxBetter.checked;
-    const ctxWorse  = $ctxWorse  && $ctxWorse.checked;
-    const ctxClose  = $ctxClose  && $ctxClose.checked;
-    const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
-
-    const keepRow = (x)=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
-      const d = Number(x.diff_pts||0);
-      if(!wantAllRel){
-        if(ctxBetter && !(d < 0)) return false;
-        if(ctxWorse  && !(d > 0)) return false;
-      }
-      if(ctxClose && !x.close_match) return false;
-      return true;
-    };
-
+    // Phase- and context-aware summary (used for Focus/Kiviat bottom stats)
+    if(!lic || !PLAYERS[lic]) return {matches:0,wins:0,losses:0,win_rate:null,perfs:0,contres:0,pointres_total:0};
+    const b = buildSegmentBuckets(lic, scope, phase);
     let m=0,w=0,l=0,per=0,con=0,pts=0;
-    let ds=0, clutchP=0, clutchW=0;
-
-    for(const r of (arr||[])){
-      if(!keepRow(r)) continue;
-      m += 1;
-      const win = r.win ? 1 : 0;
-      w += win;
-      per += (r.perf ? 1 : 0);
-      con += (r.contre ? 1 : 0);
-      pts += Number(r.pointres||0);
-
-      const sf = Number(r.sets_for||0);
-      const sa = Number(r.sets_against||0);
-      if(isFinite(sf) && isFinite(sa)){
-        ds += (sf - sa);
-        const totalSets = sf + sa;
-        if(totalSets === 5){
-          clutchP += 1;
-          clutchW += win;
-        }
-      }
+    for(const k of (b.keyOrder||[])){
+      const o = b.buckets.get(k);
+      if(!o) continue;
+      m += Number(o.matches||0);
+      w += Number(o.wins||0);
+      l += Number(o.losses||0);
+      per += Number(o.perfs||0);
+      con += Number(o.contres||0);
+      pts += Number(o.pointres_total||0);
     }
-    l = m - w;
     const wr = m ? (w/m) : null;
-    const dom = m ? (ds / m) : 0;
-    const clutchRate = clutchP ? (clutchW / clutchP) : null;
-
-    return {
-      matches:m, wins:w, losses:l, win_rate:wr,
-      perfs:per, contres:con, pointres_total:pts,
-      diff_sets_total:ds, dominance:dom,
-      clutch_played:clutchP, clutch_wins:clutchW, clutch_rate:clutchRate
-    };
+    return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
   }
 
   function segmentLabels(scope, phase, lics){
@@ -1943,9 +1868,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
     function subText(p, lic){
       if(!p) return '';
-      const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
-    const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
-    const s = summaryForSelection(lic, scopeSel, phaseSel);
+      const s = p.summary || {};
       const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
       return `${m} matchs · ${w} V · ${l} D`;
     }
@@ -2148,7 +2071,21 @@ async function render(opts){
     }
 
     // view switch: overlay vs small multiples
-    const view = $view.value;
+    const viewRaw = $view.value;
+    const displaySel = ($display && $display.value) ? $display.value : 'charts';
+    const isTableMode = (displaySel === 'tables');
+    const view = isTableMode ? 'overlay' : viewRaw;
+    if($tableWrap){
+      $tableWrap.style.display = isTableMode ? 'block' : 'none';
+      if(!isTableMode) $tableWrap.innerHTML = '';
+    }
+    if(isTableMode){
+      if($canvas) $canvas.style.display = 'none';
+      if($multi){ $multi.style.display = 'none'; $multi.innerHTML=''; }
+      if($legend) $legend.innerHTML = '';
+    }
+
+
     if(view === 'multiples' && isLineMode){
       $canvas.style.display = 'none';
       $multi.style.display = 'grid';
@@ -2213,10 +2150,14 @@ async function render(opts){
     const ct = resolveChartType(metric);
     const target = {labels: bundle.labels, matchIds: (bundle.matchIds||null), series: bundle.series, type: ct, metricLabel: CURRENT_METRIC_LABEL};
     setTitleText(`${CURRENT_METRIC_LABEL||metric} — ${phaseLbl} — ${scopeLbl}`);
-    renderLegend(bundle.series);
-    if(!tweenTo(target, 220)){
-      if(ct==='bar') drawBar(bundle.labels, bundle.series);
-      else drawLine(bundle.labels, bundle.series);
+    if(!isTableMode) renderLegend(bundle.series);
+    if(isTableMode){
+      renderNumericTable(bundle);
+    }else{
+      if(!tweenTo(target, 220)){
+        if(ct==='bar') drawBar(bundle.labels, bundle.series);
+        else drawLine(bundle.labels, bundle.series);
+      }
     }
     LAST_RENDER = target;
     const who = hasB ? `${(PLAYERS[aLic].name||aLic)} vs ${(PLAYERS[bLic].name||bLic)}` : `${selected.length}`;
@@ -2345,6 +2286,7 @@ async function render(opts){
   $scope.addEventListener('change', render);
   $phase.addEventListener('change', render);
   $view.addEventListener('change', render);
+  if($display) $display.addEventListener('change', ()=>{ render({reset:true}); });
   if($delta) $delta.addEventListener('change', render);
   $compare.addEventListener('change', ()=>{
     // keep A as first selected; if none, auto select first player in data
@@ -2365,7 +2307,10 @@ async function render(opts){
 
   $exportBtn.addEventListener('click', async ()=>{
     const mode = $mode.value;
-    const view = $view.value;
+    const viewRaw = $view.value;
+    const displaySel = ($display && $display.value) ? $display.value : 'charts';
+    const isTableMode = (displaySel === 'tables');
+    const view = isTableMode ? 'overlay' : viewRaw;
     const now = new Date();
     const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');
     const safe = (s)=> String(s||'').normalize('NFKD').replace(/[^\w\d\- ]+/g,'').trim().replace(/\s+/g,'_').slice(0,60);

@@ -45,6 +45,10 @@
 .g-table th{ position:sticky; top:0; background:rgba(12,18,30,0.92); backdrop-filter: blur(6px); text-align:left; z-index:2; }
 .g-table tr:hover td{ background:rgba(255,255,255,0.03); }
 .g-table .num{ text-align:right; font-variant-numeric: tabular-nums; }
+
+.g-table td.heat-pos{ background: rgba(40, 190, 90, 0.18); color: #41e48c; font-weight: 700; }
+.g-table td.heat-neg{ background: rgba(220, 60, 60, 0.18); color: #ff5a5a; font-weight: 700; }
+.g-table td.heat-neu{ background: rgba(240, 190, 40, 0.18); color: #ffd36a; font-weight: 700; }
 @media (max-width: 520px){
   .g-table{ min-width:440px; }
   .g-table th,.g-table td{ padding:9px 10px; font-size:13px; }
@@ -953,6 +957,21 @@ root.appendChild(style);
     const labels = bundle.labels;
     const series = bundle.series;
 
+    // Identify delta series (label starts with "Δ")
+    const isDelta = (s) => {
+      const lab = String((s && s.label) || '').trim();
+      return lab.startsWith('Δ') || lab.startsWith('Δ ');
+    };
+
+    // Classify for heat coloring: green (pos), red (neg), yellow (near 0 / tie)
+    const heatClass = (v, eps) => {
+      if(v==null || Number.isNaN(v)) return '';
+      const e = (eps==null) ? 1e-9 : eps;
+      if(v > e) return 'heat-pos';
+      if(v < -e) return 'heat-neg';
+      return 'heat-neu';
+    };
+
     // Build header: Label + each series label
     let html = '<table class="g-table"><thead><tr><th>Période</th>';
     for(const s of series){
@@ -960,11 +979,50 @@ root.appendChild(style);
     }
     html += '</tr></thead><tbody>';
 
+    // When exactly 2 non-delta series exist, we can also color A/B cells by comparison.
+    const nonDeltaIdx = [];
+    for(let si=0; si<series.length; si++){
+      if(!isDelta(series[si])) nonDeltaIdx.push(si);
+    }
+    const canCompareAB = (nonDeltaIdx.length === 2);
+
     for(let i=0;i<labels.length;i++){
       html += `<tr><td>${esc(labels[i])}</td>`;
-      for(const s of series){
+
+      // A/B comparison values for this row (optional)
+      let aVal = null, bVal = null;
+      if(canCompareAB){
+        const sa = series[nonDeltaIdx[0]];
+        const sb = series[nonDeltaIdx[1]];
+        aVal = (sa.values && i < sa.values.length) ? sa.values[i] : null;
+        bVal = (sb.values && i < sb.values.length) ? sb.values[i] : null;
+      }
+
+      for(let si=0; si<series.length; si++){
+        const s = series[si];
         const v = (s.values && i < s.values.length) ? s.values[i] : null;
-        html += `<td class="num">${(v==null || Number.isNaN(v)) ? '—' : esc(fmtNum(v))}</td>`;
+
+        let cls = 'num';
+        // Delta series: color by sign
+        if(isDelta(s)){
+          // eps scaled a bit to ignore tiny float noise
+          const eps = 1e-6;
+          const hc = heatClass(v, eps);
+          if(hc) cls += ' ' + hc;
+        }else if(canCompareAB && (si === nonDeltaIdx[0] || si === nonDeltaIdx[1])){
+          // A/B series: green for higher, red for lower, yellow for tie
+          if(aVal!=null && bVal!=null && !Number.isNaN(aVal) && !Number.isNaN(bVal)){
+            const diff = aVal - bVal;
+            const eps = 1e-6;
+            if(si === nonDeltaIdx[0]){
+              cls += ' ' + (diff > eps ? 'heat-pos' : (diff < -eps ? 'heat-neg' : 'heat-neu'));
+            }else{
+              cls += ' ' + (diff < -eps ? 'heat-pos' : (diff > eps ? 'heat-neg' : 'heat-neu'));
+            }
+          }
+        }
+
+        html += `<td class="${cls}">${(v==null || Number.isNaN(v)) ? '—' : esc(fmtNum(v))}</td>`;
       }
       html += '</tr>';
     }

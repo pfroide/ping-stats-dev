@@ -868,7 +868,16 @@ root.appendChild(style);
     if(av >= 100) return String(Math.round(v));
     if(av >= 10) return v.toFixed(1);
     return v.toFixed(2);
-  }
+  }  // Heatmap classes used by numeric tables (green/red/yellow)
+  const heatClass = (v, eps) => {
+    if(v==null || Number.isNaN(v)) return '';
+    const e = (eps==null) ? 1e-9 : eps;
+    if(v > e) return 'heat-pos';
+    if(v < -e) return 'heat-neg';
+    return 'heat-neu';
+  };
+
+
 
   function cleanXLabel(s){
     s = (s||'').replace(/\s*#.*$/,'').trim();

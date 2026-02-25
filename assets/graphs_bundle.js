@@ -1991,6 +1991,9 @@ async function render(opts){
     opts = opts || {};
 
     if(!MANIFEST){ return; }
+    // display mode (charts/tables) - declared early to avoid TDZ in radar path
+    let isTableMode = ($display && $display.value === 'tables');
+
     // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
     try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
     // derive A/B selection (no multi-selection)
@@ -2182,7 +2185,7 @@ async function render(opts){
     // view switch: overlay vs small multiples
     const viewRaw = $view.value;
     const displaySel = ($display && $display.value) ? $display.value : 'charts';
-    const isTableMode = (displaySel === 'tables');
+    isTableMode = (displaySel === 'tables');
     const view = isTableMode ? 'overlay' : viewRaw;
     if($tableWrap){
       $tableWrap.style.display = isTableMode ? 'block' : 'none';
@@ -2418,7 +2421,7 @@ async function render(opts){
     const mode = $mode.value;
     const viewRaw = $view.value;
     const displaySel = ($display && $display.value) ? $display.value : 'charts';
-    const isTableMode = (displaySel === 'tables');
+    isTableMode = (displaySel === 'tables');
     const view = isTableMode ? 'overlay' : viewRaw;
     const now = new Date();
     const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');

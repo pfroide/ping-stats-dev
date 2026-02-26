@@ -2196,11 +2196,6 @@ async function render(opts){
     const displaySel = ($display && $display.value) ? $display.value : 'charts';
     isTableMode = (displaySel === 'tables');
     const view = isTableMode ? 'overlay' : viewRaw;
-    // Ensure canvas/state is freshly rendered before exporting (avoids blank exports when switching views)
-    try{
-      const rr = render({reset:false});
-      if(rr && rr.then) await rr;
-    }catch(e){ console.warn(e); }
     if($tableWrap){
       $tableWrap.style.display = isTableMode ? 'block' : 'none';
       if(!isTableMode) $tableWrap.innerHTML = '';
@@ -2757,10 +2752,6 @@ async function render(opts){
 
     // If we are in mini-graphs view, keep current behavior (multiple downloads)
     if(view==='multiples' && $multi.style.display!=='none'){
-      // Radar export must be composite (a mini canvas does not represent the whole view)
-      if(mode==='radar'){
-        try{ const out = await buildCompositeRadar(); dl(out, safe(`kiviat_${stamp}`)); return; }catch(e){ console.warn(e); }
-      }
       const canv = Array.from($multi.querySelectorAll('canvas'));
       canv.forEach((cv,i)=>{
         const titleEl = cv.parentElement && cv.parentElement.querySelector('div');

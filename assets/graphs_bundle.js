@@ -492,6 +492,67 @@ root.appendChild(style);
     return (x*100).toFixed(0) + '%';
   }
 
+
+  function normPhase(v){
+    if(v==null) return 'all';
+    const s = (''+v).toLowerCase().trim();
+    if(s==='all' || s==='toutes' || s==='toutesphases') return 'all';
+    if(s==='p1' || s==='phase1' || s==='1') return '1';
+    if(s==='p2' || s==='phase2' || s==='2') return '2';
+    // tolerate values like "Phase 1"
+    if(s.includes('1')) return '1';
+    if(s.includes('2')) return '2';
+    return 'all';
+  }
+
+  function computeCurrentSummary(p){
+    if(!p) return {matches:0,wins:0,losses:0,win_rate:null,perfs:0,contres:0};
+    const scope = ($scope && $scope.value) ? $scope.value : 'tous';
+    const phaseN = normPhase(($phase && $phase.value) ? $phase.value : 'all');
+
+    // Default: global summary if no filtering requested
+    const wantsFiltered = !(scope==='tous' && phaseN==='all');
+    if(!wantsFiltered || !p.segments || !p.segments[scope]){
+      const s = p.summary || {};
+      const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
+      return {matches:m,wins:w,losses:l,win_rate:(m? w/m : null),perfs:Number(s.perfs||0),contres:Number(s.contres||0), dominance:s.dominance, clutch_rate:s.clutch_rate, clutch_wins:s.clutch_wins, clutch_played:s.clutch_played, pointres_total:s.pointres_total};
+    }
+
+    const segs = p.segments[scope] || {};
+    let matches=0,wins=0,losses=0,perfs=0,contres=0;
+    let diff_sets_total=0, pointres_total=0;
+    let clutch_wins=0, clutch_played=0;
+
+    for(const k in segs){
+      const sg = segs[k];
+      if(!sg) continue;
+
+      const sgPhase = normPhase(sg.phase);
+      const keyPhase = (k && typeof k==='string' && k.startsWith('p')) ? k.slice(1,2) : null; // '1'/'2'
+      const okPhase = (phaseN==='all') || (sgPhase===phaseN) || (keyPhase===phaseN);
+
+      if(!okPhase) continue;
+
+      const m = Number(sg.matches||0);
+      if(!(m>0)) continue;
+
+      matches += m;
+      wins += Number(sg.wins||0);
+      losses += Number(sg.losses||0);
+      perfs += Number(sg.perfs||0);
+      contres += Number(sg.contres||0);
+      diff_sets_total += Number(sg.diff_sets||0);
+      pointres_total += Number(sg.pointres_total||0);
+      clutch_wins += Number(sg.clutch_wins||0);
+      clutch_played += Number(sg.clutch_played||0);
+    }
+
+    const win_rate = matches ? (wins/matches) : null;
+    const dominance = matches ? (diff_sets_total/matches) : null;
+
+    return {matches,wins,losses,win_rate,perfs,contres,dominance, pointres_total, clutch_wins, clutch_played, clutch_rate:(clutch_played? clutch_wins/clutch_played : null)};
+  }
+
   function openSheetFor(lic){
     if(!lic) return;
     const p = PLAYERS[lic];
@@ -577,7 +638,8 @@ root.appendChild(style);
       const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
       const tlAll = (p.timeline && (p.timeline[scopeSel] || p.timeline['tous'] || p.timeline['indiv'] || p.timeline['equipe'])) || [];
       const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
-      const tl = (tlAll || []).filter(r => (phaseSel==='all' || (''+r.phase)==phaseSel));
+      const phaseN = normPhase(phaseSel);
+      const tl = (tlAll || []).filter(r => (phaseN==='all' || normPhase(r.phase)===phaseN));
 
       // Segment starts (first pts_start of each segment)
       const segMap = new Map();
@@ -1853,14 +1915,14 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   function buildSegmentBuckets(lic, scope, phase){
     const p = PLAYERS[lic];
-    const phaseNorm = (phase==='p1') ? '1' : ((phase==='p2') ? '2' : (''+phase));
+    const phaseNorm = normPhase(phase);
     const arr = (p && p.timeline && p.timeline[scope]) ? p.timeline[scope] : [];
     const ctxBetter = $ctxBetter && $ctxBetter.checked;
     const ctxWorse  = $ctxWorse && $ctxWorse.checked;
     const ctxClose  = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      if(!(phaseNorm==='all' || (''+x.phase)==phaseNorm)) return false;
+      if(!(phaseNorm==='all' || normPhase(x.phase)===phaseNorm)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
@@ -2037,7 +2099,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     // Show/hide B side
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
-    if(document.getElementById('gFocusCardB')) document.getElementById('gFocusCardB').style.display = hasB ? 'flex' : 'none';
+    const $focusCardB = el('gFocusCardB');
+    if($focusCardB) $focusCardB.style.display = hasB ? 'flex' : 'none';
 
     const pa = PLAYERS[aLic] || null;
     const pb = hasB ? (PLAYERS[bLic] || null) : null;
@@ -2047,7 +2110,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
     function subText(p, lic){
       if(!p) return '';
-      const s = p.summary || {};
+      const s = computeCurrentSummary(p);
       const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
       return `${m} matchs · ${w} V · ${l} D`;
     }
@@ -2622,7 +2685,7 @@ async function render(opts){
         // text
         const p = PLAYERS[lic] || null;
         const name = p ? (p.name || lic) : (lic || '—');
-        const s = p ? (p.summary || {}) : {};
+        const s = p ? computeCurrentSummary(p) : {};
         const m = Number(s.matches||0), w1 = Number(s.wins||0), l1 = Number(s.losses||0);
         const sub = p ? `${m} matchs · ${w1} V · ${l1} D` : '';
 

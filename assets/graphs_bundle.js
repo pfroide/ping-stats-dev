@@ -735,8 +735,6 @@ root.appendChild(style);
     const l2 = parts.slice(1).join(' ');
     return `<span class="pname">${esc(l1)}<span class="l2">${esc(l2)}</span></span>`;
   }
-[c])); }
-
   let MANIFEST = null;
   let PLAYER_INDEX = {}; // lic -> {name,matches}
   let PLAYERS = {};      // lic -> full data (loaded on demand)

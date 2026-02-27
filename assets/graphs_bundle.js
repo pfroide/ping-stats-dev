@@ -38,6 +38,22 @@
     .g-tip b{ font-weight:700; }
     .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
     .g-legend{ display:flex; flex-wrap:wrap; gap:8px; width:100%; margin:8px 0 0; justify-content:center; }
+
+.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:hidden; }
+.g-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+.g-table th,.g-table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; white-space:nowrap; }
+.g-table th{ position:sticky; top:0; background:rgba(12,18,30,0.92); backdrop-filter: blur(6px); text-align:left; z-index:2; }
+.g-table tr:hover td{ background:rgba(255,255,255,0.03); }
+.g-table .num{ text-align:right; font-variant-numeric: tabular-nums; }
+
+.g-table td.heat-pos{ background: rgba(40, 190, 90, 0.18); color: #41e48c; font-weight: 700; }
+.g-table td.heat-neg{ background: rgba(220, 60, 60, 0.18); color: #ff5a5a; font-weight: 700; }
+.g-table td.heat-neu{ background: rgba(240, 190, 40, 0.18); color: #ffd36a; font-weight: 700; }
+@media (max-width: 520px){
+  .g-table{ min-width:440px; }
+  .g-table th,.g-table td{ padding:9px 10px; font-size:13px; }
+}
+
     .g-legend .it{ display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #263043; background:rgba(255,255,255,0.04); font-size:12px; }
     .g-legend .sw{ width:10px; height:10px; border-radius:3px; }
     .g-kpi-card{ border:1px solid #263043; border-radius:14px; background:rgba(255,255,255,0.04); padding:10px 12px; }
@@ -225,6 +241,10 @@ root.appendChild(style);
           <option value="overlay">Vue: superposée</option>
           <option value="multiples">Vue: mini-graphs</option>
         </select>
+        <select id="gDisplay" class="g-select">
+          <option value="charts">Affichage: graphiques</option>
+          <option value="tables">Affichage: tableaux</option>
+        </select>
         <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
         <button id="gSheet" class="g-btn" type="button">Fiche</button>
       </div>
@@ -293,6 +313,7 @@ root.appendChild(style);
       <div id="gTip" class="g-tip" style="display:none"></div>
       <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
       <div id="gLegend" class="g-legend"></div>
+      <div id="gTableWrap" class="g-tablewrap" style="display:none"></div>
       <div id="gCompareCards" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;"></div>
       <div id="gMulti" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; max-width:980px;"></div>
       <div class="g-muted" id="gInfo"></div>
@@ -348,6 +369,7 @@ root.appendChild(style);
   const $phase = el('gPhase');
   const $compare = el('gCompare');
   const $view = el('gView');
+  const $display = el('gDisplay');
   const $controlsRow = el('gControlsRow');
   const $focus = el('gFocus');
   const $sheetBtn = el('gSheet');
@@ -393,6 +415,7 @@ root.appendChild(style);
   const $tip = el('gTip');
   const $canvas = el('gCanvas');
   const $legend = el('gLegend');
+  const $tableWrap = el('gTableWrap');
   const $multi = el('gMulti');
   const $info = el('gInfo');
   const ctx = $canvas.getContext('2d');
@@ -845,7 +868,16 @@ root.appendChild(style);
     if(av >= 100) return String(Math.round(v));
     if(av >= 10) return v.toFixed(1);
     return v.toFixed(2);
-  }
+  }  // Heatmap classes used by numeric tables (green/red/yellow)
+  const heatClass = (v, eps) => {
+    if(v==null || Number.isNaN(v)) return '';
+    const e = (eps==null) ? 1e-9 : eps;
+    if(v > e) return 'heat-pos';
+    if(v < -e) return 'heat-neg';
+    return 'heat-neu';
+  };
+
+
 
   function cleanXLabel(s){
     s = (s||'').replace(/\s*#.*$/,'').trim();
@@ -924,7 +956,138 @@ root.appendChild(style);
     if($focusTitle && wrap.classList.contains('g-focus')) $focusTitle.textContent = (t || '');
   }
 
-  function hashHue(s){
+  function renderNumericTable(bundle){
+    if(!$tableWrap) return;
+    if(!bundle || !bundle.labels || !bundle.series || !bundle.series.length){
+      $tableWrap.innerHTML = '';
+      return;
+    }
+
+    const labels = bundle.labels;
+    const series = bundle.series;
+
+    // Identify delta series (label starts with "Δ")
+    const isDelta = (s) => {
+      const lab = String((s && s.label) || '').trim();
+      return lab.startsWith('Δ') || lab.startsWith('Δ ');
+    };
+
+    // Classify for heat coloring: green (pos), red (neg), yellow (near 0 / tie)
+    const heatClass = (v, eps) => {
+      if(v==null || Number.isNaN(v)) return '';
+      const e = (eps==null) ? 1e-9 : eps;
+      if(v > e) return 'heat-pos';
+      if(v < -e) return 'heat-neg';
+      return 'heat-neu';
+    };
+
+    // Build header: Label + each series label
+    let html = '<table class="g-table"><thead><tr><th>Période</th>';
+    for(const s of series){
+      html += `<th class="num">${esc(s.label||'')}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+
+    // When exactly 2 non-delta series exist, we can also color A/B cells by comparison.
+    const nonDeltaIdx = [];
+    for(let si=0; si<series.length; si++){
+      if(!isDelta(series[si])) nonDeltaIdx.push(si);
+    }
+    const canCompareAB = (nonDeltaIdx.length === 2);
+
+    for(let i=0;i<labels.length;i++){
+      html += `<tr><td>${esc(labels[i])}</td>`;
+
+      // A/B comparison values for this row (optional)
+      let aVal = null, bVal = null;
+      if(canCompareAB){
+        const sa = series[nonDeltaIdx[0]];
+        const sb = series[nonDeltaIdx[1]];
+        aVal = (sa.values && i < sa.values.length) ? sa.values[i] : null;
+        bVal = (sb.values && i < sb.values.length) ? sb.values[i] : null;
+      }
+
+      for(let si=0; si<series.length; si++){
+        const s = series[si];
+        const v = (s.values && i < s.values.length) ? s.values[i] : null;
+
+        let cls = 'num';
+        // Delta series: color by sign
+        if(isDelta(s)){
+          // eps scaled a bit to ignore tiny float noise
+          const eps = 1e-6;
+          const hc = heatClass(v, eps);
+          if(hc) cls += ' ' + hc;
+        }else if(canCompareAB && (si === nonDeltaIdx[0] || si === nonDeltaIdx[1])){
+          // A/B series: green for higher, red for lower, yellow for tie
+          if(aVal!=null && bVal!=null && !Number.isNaN(aVal) && !Number.isNaN(bVal)){
+            const diff = aVal - bVal;
+            const eps = 1e-6;
+            if(si === nonDeltaIdx[0]){
+              cls += ' ' + (diff > eps ? 'heat-pos' : (diff < -eps ? 'heat-neg' : 'heat-neu'));
+            }else{
+              cls += ' ' + (diff < -eps ? 'heat-pos' : (diff > eps ? 'heat-neg' : 'heat-neu'));
+            }
+          }
+        }
+
+        html += `<td class="${cls}">${(v==null || Number.isNaN(v)) ? '—' : esc(fmtNum(v))}</td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    $tableWrap.innerHTML = html;
+  }
+
+
+  
+  function buildRadarTable(axes, aSeries, bSeries){
+    if(!$tableWrap) return;
+    const cols = [];
+    if(aSeries) cols.push({key:'a', label:aSeries.label||'A', color:aSeries.color||COLOR_A, values:aSeries.values||[]});
+    if(bSeries) cols.push({key:'b', label:bSeries.label||'B', color:bSeries.color||COLOR_B, values:bSeries.values||[]});
+
+    const cssW = (typeof window!=='undefined' && window.innerWidth) ? window.innerWidth : 9999;
+    const compactHdr = (cssW < 520);
+
+    let html = '<table class="g-table"><thead><tr><th>Stat</th>';
+    for(let ci=0; ci<cols.length; ci++){
+      const full = cols[ci].label;
+      const short = compactHdr ? (ci===0?'A':'B') : full;
+      const titleAttr = compactHdr ? ` title="${esc(full)}"` : '';
+      html += `<th class="num"${titleAttr}>${esc(short)}</th>`;
+    }
+    if(cols.length===2){
+      html += '<th class="num">Δ</th>';
+    }
+    html += '</tr></thead><tbody>';
+
+    for(let i=0;i<axes.length;i++){
+      const ax = axes[i];
+      const name = ax && (ax.label||ax.key) ? (ax.label||ax.key) : ('Axe '+(i+1));
+      const va = cols[0] ? cols[0].values[i] : null;
+      const vb = cols[1] ? cols[1].values[i] : null;
+      html += `<tr><td>${esc(name)}</td>`;
+      if(cols[0]){
+        html += `<td class="num">${(va==null||Number.isNaN(va))?'—':esc(fmtNum(va*100))+'%'}</td>`;
+      }
+      if(cols[1]){
+        html += `<td class="num">${(vb==null||Number.isNaN(vb))?'—':esc(fmtNum(vb*100))+'%'}</td>`;
+      }
+      if(cols.length===2){
+        let dv = null;
+        if(va!=null && vb!=null && !Number.isNaN(va) && !Number.isNaN(vb)) dv = va - vb;
+        const cls = 'num ' + heatClass(dv, 1e-6);
+        html += `<td class="${cls}">${(dv==null||Number.isNaN(dv))?'—':esc(fmtNum(dv*100))+'%'}</td>`;
+      }
+      html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    $tableWrap.innerHTML = html;
+  }
+
+function hashHue(s){
     s = String(s||'');
     let h=0;
     for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))>>>0;
@@ -952,7 +1115,7 @@ root.appendChild(style);
     ctxX.stroke();
     // title moved to HTML (better on mobile)
   
-    } finally { try{ ctx2 && ctx2.restore(); }catch(e){} }
+    } finally { ctx.restore(); }
 }
 
   function drawYAxis(ctxX, left, top, bottom, right, ymin, ymax){
@@ -1047,11 +1210,9 @@ root.appendChild(style);
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     let min = all.length? Math.min(...all):0;
     let max = all.length? Math.max(...all):1;
-    // Always show y=0 baseline on line charts (unless tightY)
-    if(!opts.tightY){
-      min = Math.min(min, 0);
-      max = Math.max(max, 0);
-    }
+    // Always show y=0 baseline on line charts
+    min = Math.min(min, 0);
+    max = Math.max(max, 0);
     let pad = (max-min)*0.08;
     if(!isFinite(pad) || pad<=0) pad = 1;
     let ymin = min - pad;
@@ -1296,11 +1457,10 @@ root.appendChild(style);
 
 
   function drawChartOn(canvas, labels, series, opts){
-    let ctx2 = null;
+    ctx.save();
     try{
     const f = fitCanvas(canvas, 160, 120);
-    ctx2 = f.ctx;
-    ctx2.save();
+    const ctx2 = f.ctx;
     const w = f.w, h = f.h;
     if(!ctx2) return;
     opts = opts || {};
@@ -1557,61 +1717,13 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   function drawRadar(a, b, axes, bgA, bgB){
     const w=_cw, h=_ch;
     const cx=w/2, cy=h/2+12;
-    // Dynamic radius so labels never overflow (especially on mobile/focus)
-    let R0 = Math.min(w,h)*0.38;
-    let R = R0;
-
+    const R=Math.min(w,h)*0.38;
     ctx.clearRect(0,0,w,h);
 
     // Background portraits (desktop/tablet only). Keep mobile ultra-readable.
     const dpr = (typeof window!=='undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
     const cssW = w / dpr;
     const isMobile = cssW < 620;
-
-    const fontPx = isMobile ? 11 : 13;
-    ctx.font = `${fontPx}px system-ui`;
-
-    function textMetrics(t){
-      const m = ctx.measureText(t);
-      const a = (m.actualBoundingBoxAscent!=null) ? m.actualBoundingBoxAscent : (fontPx*0.8);
-      const d = (m.actualBoundingBoxDescent!=null) ? m.actualBoundingBoxDescent : (fontPx*0.25);
-      return {w:m.width||0, a, d};
-    }
-
-    function labelBounds(Rtest){
-      const pad = 8;
-      let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
-      const n = axes.length || 1;
-      for(let i=0;i<n;i++){
-        const ang=-Math.PI/2+(Math.PI*2)*(i/n);
-        const x=cx+Rtest*Math.cos(ang), y=cy+Rtest*Math.sin(ang);
-        const lbl=axes[i].label || '';
-        const tm=textMetrics(lbl);
-        const tx = x + (x>cx ? pad : -(tm.w+pad));
-        const ty = y + (y>cy ? 16 : -6);
-        minX = Math.min(minX, tx);
-        maxX = Math.max(maxX, tx + tm.w);
-        minY = Math.min(minY, ty - tm.a);
-        maxY = Math.max(maxY, ty + tm.d);
-      }
-      return {minX,minY,maxX,maxY};
-    }
-
-    function fits(Rtest){
-      const b=labelBounds(Rtest);
-      const m=6;
-      return (b.minX>=m && b.minY>=m && b.maxX<=w-m && b.maxY<=h-m);
-    }
-
-    // Binary search best R
-    let lo = Math.max(24, Math.min(w,h)*0.18);
-    let hi = Math.min(w,h)*0.48;
-    if(hi < lo) hi = lo;
-    for(let it=0; it<18; it++){
-      const mid = (lo+hi)/2;
-      if(fits(mid)) lo = mid; else hi = mid;
-    }
-    R = Math.min(R0, lo);
     if(!isMobile && (bgA || bgB)){
       const gap = R * 0.95;
       const leftW  = Math.max(0, Math.floor(cx - gap));
@@ -1641,7 +1753,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     }
     // spokes + labels
     ctx.fillStyle='rgba(154,164,178,0.92)';
-    ctx.font=`${fontPx}px system-ui`;
+    ctx.font='13px system-ui';
     for(let i=0;i<n;i++){
       const ang=-Math.PI/2+(Math.PI*2)*(i/n);
       const x=cx+R*Math.cos(ang), y=cy+R*Math.sin(ang);
@@ -1649,11 +1761,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
       const lbl=axes[i].label;
       const pad = 8;
       const tw = ctx.measureText(lbl).width;
-      let tx = x + (x>cx ? pad : -(tw+pad));
-      let ty = y + (y>cy ? 16 : -6);
-      // Clamp as a last-resort safety (should rarely trigger thanks to dynamic R)
-      tx = Math.max(6, Math.min(w - tw - 6, tx));
-      ty = Math.max(6 + fontPx, Math.min(h - 6, ty));
+      const tx = x + (x>cx ? pad : -(tw+pad));
+      const ty = y + (y>cy ? 16 : -6);
       ctx.fillText(lbl, tx, ty);
     }
     function poly(vals, label, color){
@@ -1871,12 +1980,9 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
-    const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
-    const scopeSel = ($scope && $scope.value) ? $scope.value : 'all';
-
     function subText(p, lic){
-      if(!lic) return '';
-      const s = summaryForSelection(lic, scopeSel, phaseSel) || {};
+      if(!p) return '';
+      const s = p.summary || {};
       const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
       return `${m} matchs · ${w} V · ${l} D`;
     }
@@ -1894,6 +2000,9 @@ async function render(opts){
     opts = opts || {};
 
     if(!MANIFEST){ return; }
+    // display mode (charts/tables) - declared early to avoid TDZ in radar path
+    let isTableMode = ($display && $display.value === 'tables');
+
     // Safety: never lock page scroll permanently (focus/sheet must restore overflow).
     try{ if(!document.querySelector('.g-sheetpop[style*="display: flex"]')){ document.documentElement.style.overflow=''; document.body.style.overflow=''; } }catch(e){}
     // derive A/B selection (no multi-selection)
@@ -1979,8 +2088,12 @@ async function render(opts){
       }
 
       setTitleText(`Kiviat profil — ${phaseLbl}`);
-      renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
-      drawRadar(aSeries, bSeries, axes, bgA, bgB);
+      if(isTableMode){
+        buildRadarTable(axes, aSeries, bSeries);
+      }else{
+        renderLegend([aSeries].concat(bSeries?[bSeries]:[]));
+        drawRadar(aSeries, bSeries, axes, bgA, bgB);
+      }
       $info.textContent = 'Kiviat: ' + aSeries.label + ' vs ' + (bSeries? bSeries.label : '—');
 
       // A/B synthesis cards under the kiviat (mobile-friendly)
@@ -2079,7 +2192,21 @@ async function render(opts){
     }
 
     // view switch: overlay vs small multiples
-    const view = $view.value;
+    const viewRaw = $view.value;
+    const displaySel = ($display && $display.value) ? $display.value : 'charts';
+    isTableMode = (displaySel === 'tables');
+    const view = isTableMode ? 'overlay' : viewRaw;
+    if($tableWrap){
+      $tableWrap.style.display = isTableMode ? 'block' : 'none';
+      if(!isTableMode) $tableWrap.innerHTML = '';
+    }
+    if(isTableMode){
+      if($canvas) $canvas.style.display = 'none';
+      if($multi){ $multi.style.display = 'none'; $multi.innerHTML=''; }
+      if($legend) $legend.innerHTML = '';
+    }
+
+
     if(view === 'multiples' && isLineMode){
       $canvas.style.display = 'none';
       $multi.style.display = 'grid';
@@ -2144,10 +2271,14 @@ async function render(opts){
     const ct = resolveChartType(metric);
     const target = {labels: bundle.labels, matchIds: (bundle.matchIds||null), series: bundle.series, type: ct, metricLabel: CURRENT_METRIC_LABEL};
     setTitleText(`${CURRENT_METRIC_LABEL||metric} — ${phaseLbl} — ${scopeLbl}`);
-    renderLegend(bundle.series);
-    if(!tweenTo(target, 220)){
-      if(ct==='bar') drawBar(bundle.labels, bundle.series);
-      else drawLine(bundle.labels, bundle.series);
+    if(!isTableMode) renderLegend(bundle.series);
+    if(isTableMode){
+      renderNumericTable(bundle);
+    }else{
+      if(!tweenTo(target, 220)){
+        if(ct==='bar') drawBar(bundle.labels, bundle.series);
+        else drawLine(bundle.labels, bundle.series);
+      }
     }
     LAST_RENDER = target;
     const who = hasB ? `${(PLAYERS[aLic].name||aLic)} vs ${(PLAYERS[bLic].name||bLic)}` : `${selected.length}`;
@@ -2276,6 +2407,7 @@ async function render(opts){
   $scope.addEventListener('change', render);
   $phase.addEventListener('change', render);
   $view.addEventListener('change', render);
+  if($display) $display.addEventListener('change', ()=>{ render({reset:true}); });
   if($delta) $delta.addEventListener('change', render);
   $compare.addEventListener('change', ()=>{
     // keep A as first selected; if none, auto select first player in data
@@ -2296,7 +2428,10 @@ async function render(opts){
 
   $exportBtn.addEventListener('click', async ()=>{
     const mode = $mode.value;
-    const view = $view.value;
+    const viewRaw = $view.value;
+    const displaySel = ($display && $display.value) ? $display.value : 'charts';
+    isTableMode = (displaySel === 'tables');
+    const view = isTableMode ? 'overlay' : viewRaw;
     const now = new Date();
     const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');
     const safe = (s)=> String(s||'').normalize('NFKD').replace(/[^\w\d\- ]+/g,'').trim().replace(/\s+/g,'_').slice(0,60);
@@ -2615,14 +2750,8 @@ async function render(opts){
     }
 
 
-    // If we are in mini-graphs view
+    // If we are in mini-graphs view, keep current behavior (multiple downloads)
     if(view==='multiples' && $multi.style.display!=='none'){
-      // Special case: radar exports a single composite image (canvas + title + legend + stats)
-      if(mode==='radar'){
-        const cv = buildCompositeRadar();
-        dl(cv, `kiviat_${safe(titleText())}_${stamp}`);
-        return;
-      }
       const canv = Array.from($multi.querySelectorAll('canvas'));
       canv.forEach((cv,i)=>{
         const titleEl = cv.parentElement && cv.parentElement.querySelector('div');

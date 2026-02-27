@@ -39,9 +39,14 @@
     .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
     .g-legend{ display:flex; flex-wrap:wrap; gap:8px; width:100%; margin:8px 0 0; justify-content:center; }
 
-.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:hidden; }
+.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .g-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
-.g-table th,.g-table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; white-space:nowrap; }
+.g-table th,.g-table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; }
+.g-table td{ white-space:nowrap; }
+.g-table th{ white-space:normal; line-height:1.1; }
+.g-table th.g-th-player{ text-align:center; }
+.g-table th .pname{ display:block; }
+.g-table th .pname .l2{ display:block; opacity:0.92; font-weight:700; }
 .g-table th{ position:sticky; top:0; background:rgba(12,18,30,0.92); backdrop-filter: blur(6px); text-align:left; z-index:2; }
 .g-table tr:hover td{ background:rgba(255,255,255,0.03); }
 .g-table .num{ text-align:right; font-variant-numeric: tabular-nums; }
@@ -112,8 +117,11 @@
     }
 
     @media (max-width: 560px){
-      .g-card.g-focus .g-canvas{ height:52vh; }
+      .g-card.g-focus .g-canvas{ height:64vh; }
       .g-card.g-focus .g-legend{ padding-bottom:12px; }
+      .g-card.g-focus .g-focushdr-content{ min-height:88px; padding:8px 10px; gap:10px; }
+      .g-card.g-focus .g-fplayer{ min-width:0; max-width:46vw; padding:8px 10px; }
+      .g-card.g-focus .g-fplayer .meta{ display:none; }
     }
 
     /* Focus mode (mobile-first fullscreen) */
@@ -488,7 +496,54 @@ root.appendChild(style);
     if(!lic) return;
     const p = PLAYERS[lic];
     if(!p) return;
-    const s = p.summary || {};
+    const s0 = p.summary || {};
+    const scope = ($scope && $scope.value) ? $scope.value : 'tous';
+    const phase = ($phase && $phase.value) ? $phase.value : 'all';
+
+    function summaryFromSegments(){
+      const segs = (p.segments && p.segments[scope]) ? p.segments[scope] : null;
+      if(!segs) return null;
+
+      let matches=0,wins=0,losses=0,perfs=0,contres=0,diff_sets_total=0;
+      let pointres_total=0,expected_wins=0,overperf=0;
+      let opp_pts_sum=0,opp_pts_n=0;
+
+      for(const k in segs){
+        const sg = segs[k];
+        if(!sg) continue;
+        if(phase!=='all' && String(sg.phase)!==String(phase)) continue;
+
+        const m = Number(sg.matches||0);
+        matches += m;
+        wins += Number(sg.wins||0);
+        losses += Number(sg.losses||0);
+        perfs += Number(sg.perfs||0);
+        contres += Number(sg.contres||0);
+        diff_sets_total += Number(sg.diff_sets||0);
+        pointres_total += Number(sg.pointres_total||0);
+        expected_wins += Number(sg.expected_wins||0);
+        overperf += Number(sg.overperf||0);
+
+        if(isFinite(sg.opp_pts_mean)){
+          opp_pts_sum += Number(sg.opp_pts_mean) * m;
+          opp_pts_n += m;
+        }
+      }
+
+      if(matches<=0){
+        return {matches:0,wins:0,losses:0,perfs:0,contres:0,win_rate:0,diff_sets_total:0,dominance:0,pointres_total:0,pointres_mean:0,opp_pts_mean:0,expected_wins:0,overperf:0};
+      }
+      const win_rate = wins / matches;
+      const pointres_mean = pointres_total / matches;
+      const opp_pts_mean = opp_pts_n ? (opp_pts_sum / opp_pts_n) : 0;
+      const dominance = diff_sets_total / matches;
+
+      return {matches,wins,losses,perfs,contres,win_rate,diff_sets_total,dominance,pointres_total,pointres_mean,opp_pts_mean,expected_wins,overperf};
+    }
+
+    const segSum = (phase==='all' && scope==='tous') ? null : summaryFromSegments();
+    const s = segSum ? Object.assign({}, s0, segSum) : s0;
+
     $sheetName.textContent = (p.name || lic);
     const m = Number(s.matches||0);
     const w = Number(s.wins||0);
@@ -669,7 +724,18 @@ root.appendChild(style);
     else $metric.style.display = '';
   }
 
-  function esc(s){ return (''+s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function esc(s){ return (''+s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}
+  function wrapPlayerNameHTML(name){
+    const s = (name==null) ? '' : String(name).trim();
+    if(!s) return '';
+    // Split into 2 lines: first token, then the rest.
+    const parts = s.split(/\s+/).filter(Boolean);
+    if(parts.length <= 1) return `<span class="pname">${esc(s)}</span>`;
+    const l1 = parts[0];
+    const l2 = parts.slice(1).join(' ');
+    return `<span class="pname">${esc(l1)}<span class="l2">${esc(l2)}</span></span>`;
+  }
+[c])); }
 
   let MANIFEST = null;
   let PLAYER_INDEX = {}; // lic -> {name,matches}
@@ -984,7 +1050,7 @@ root.appendChild(style);
     // Build header: Label + each series label
     let html = '<table class="g-table"><thead><tr><th>Période</th>';
     for(const s of series){
-      html += `<th class="num">${esc(s.label||'')}</th>`;
+      html += `<th class="g-th-player">${wrapPlayerNameHTML(s.label||'')}</th>`;
     }
     html += '</tr></thead><tbody>';
 
@@ -1789,13 +1855,14 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   function buildSegmentBuckets(lic, scope, phase){
     const p = PLAYERS[lic];
+    const phaseNorm = (phase==='p1') ? '1' : ((phase==='p2') ? '2' : (''+phase));
     const arr = (p && p.timeline && p.timeline[scope]) ? p.timeline[scope] : [];
     const ctxBetter = $ctxBetter && $ctxBetter.checked;
     const ctxWorse  = $ctxWorse && $ctxWorse.checked;
     const ctxClose  = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      if(!(phaseNorm==='all' || (''+x.phase)==phaseNorm)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
@@ -1932,7 +1999,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxClose = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      if(!(phaseNorm==='all' || (''+x.phase)==phaseNorm)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
@@ -2398,9 +2465,9 @@ async function render(opts){
     document.documentElement.style.overflow = _isFocus ? 'hidden' : '';
     document.body.style.overflow = _isFocus ? 'hidden' : '';
   }
-  if($focus) $focus.addEventListener('click', ()=>{ setFocus(!_isFocus); render({reset:true}); });
-  if($focusClose) $focusClose.addEventListener('click', ()=>{ setFocus(false); render({reset:true}); });
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus){ setFocus(false); render({reset:true}); } });
+  if($focus) $focus.addEventListener('click', ()=>{ setFocus(!_isFocus); requestAnimationFrame(()=>requestAnimationFrame(()=>render({reset:true}))); });
+  if($focusClose) $focusClose.addEventListener('click', ()=>{ setFocus(false); requestAnimationFrame(()=>requestAnimationFrame(()=>render({reset:true}))); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && _isFocus){ setFocus(false); requestAnimationFrame(()=>requestAnimationFrame(()=>render({reset:true}))); } });
 
   $metric.addEventListener('change', ()=>{ render({reset:true}); hideTip(); });
   $chartType.addEventListener('change', ()=>{ render({reset:true}); hideTip(); });

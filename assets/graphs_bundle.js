@@ -1473,11 +1473,12 @@ function hashHue(s){
 
     const left=46, top=12, bottom=h-38, right=w-12;
     const k = Math.max(1, series.length);
-    const groupW = Math.max(10, Math.min(54, (right-left)/(n*1.25)));
-    const span = Math.max(0, (right-left) - groupW);
+    // Use category-based spacing to keep bars evenly distributed across the plot width.
+    const stepW = (right-left) / Math.max(1, n);
+    const groupW = Math.max(10, Math.min(62, stepW * 0.92));
     const x = (i)=> {
       if(n<=1) return (left+right)/2;
-      return left + (groupW/2) + span*(i/(n-1));
+      return left + stepW*(i+0.5);
     };
     const y = (v)=> bottom - (bottom-top)*((v-ymin)/(ymax-ymin));
 

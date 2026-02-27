@@ -724,7 +724,7 @@ root.appendChild(style);
     else $metric.style.display = '';
   }
 
-  function esc(s){ return (''+s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}
+  function esc(s){ return (''+s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function wrapPlayerNameHTML(name){
     const s = (name==null) ? '' : String(name).trim();
     if(!s) return '';

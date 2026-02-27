@@ -2058,8 +2058,9 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxWorse = $ctxWorse && $ctxWorse.checked;
     const ctxClose = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
+    const phaseNorm = normPhase(phase);
     const keepRow = (x)=>{
-      if(!(phaseNorm==='all' || (''+x.phase)==phaseNorm)) return false;
+      if(!(phaseNorm==='all' || normPhase(x.phase)===phaseNorm)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;

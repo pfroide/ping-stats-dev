@@ -1472,14 +1472,12 @@ function hashHue(s){
     if(ymax===ymin){ ymax=ymin+1; }
 
     const left=46, top=12, bottom=h-38, right=w-12;
+
+    // Bar geometry: use constant category slots so spacing stays regular.
     const k = Math.max(1, series.length);
-    // Use category-based spacing to keep bars evenly distributed across the plot width.
-    const stepW = (right-left) / Math.max(1, n);
-    const groupW = Math.max(10, Math.min(62, stepW * 0.92));
-    const x = (i)=> {
-      if(n<=1) return (left+right)/2;
-      return left + stepW*(i+0.5);
-    };
+    const slotW = Math.max(1, (right-left) / Math.max(1, n));
+    const groupW = Math.max(10, Math.min(54, slotW * 0.92));
+    const x = (i)=> left + slotW*(i + 0.5);
     const y = (v)=> bottom - (bottom-top)*((v-ymin)/(ymax-ymin));
 
     drawAxesBase(ctxB,w,h);
@@ -1509,31 +1507,40 @@ function hashHue(s){
       }
     }
 
-    const barW = Math.max(6, Math.floor((groupW-6)/k));
+    // Bar width inside each category group
+    const gap = 2;
+    const inner = Math.max(6, groupW - gap*(k+1));
+    const barW = Math.max(4, Math.floor(inner / k));
     const baseY = y(0);
 
     for(let i=0;i<n;i++){
-      const gx = x(i) - (groupW/2);
+      // keep the group inside plot bounds
+      let gx = x(i) - (groupW/2);
+      gx = Math.max(left, Math.min(right - groupW, gx));
+
       for(let j=0;j<series.length;j++){
         const s=series[j];
         const v=s.values[i];
         if(v==null || !isFinite(v)) continue;
         const hue = hashHue(s.label);
-        const base = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.78)`;
-        ctxB.fillStyle = base;
-        const bx = gx + 3 + j*barW;
+        const col = s.color ? s.color : `hsla(${hue}, 80%, 65%, 0.78)`;
+        ctxB.fillStyle = col;
+
+        const bx = gx + gap + j*(barW + gap);
         const yv = y(v);
         const bh = Math.abs(baseY - yv);
         const by = v>=0 ? yv : baseY;
-        ctxB.fillRect(bx, by, barW-2, Math.max(1,bh));
+        ctxB.fillRect(bx, by, barW, Math.max(1,bh));
 
         // value label
-        ctxB.fillStyle = s.color ? s.color : `hsla(${hue}, 80%, 70%, 0.95)`;
+        ctxB.save();
+        ctxB.fillStyle = col;
         ctxB.font='600 11px system-ui';
         ctxB.textAlign = 'center';
-        const cx = bx + (barW-2)/2;
-        ctxB.fillText(fmtNum(v), cx, (v>=0? by-4 : by+bh+12));
-        ctxB.textAlign = 'left';
+        const tx = bx + barW/2;
+        const ty = (v>=0 ? (by-4) : (by+bh+12));
+        ctxB.fillText(fmtNum(v), tx, ty);
+        ctxB.restore();
       }
     }
 

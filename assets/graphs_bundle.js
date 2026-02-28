@@ -141,7 +141,7 @@
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
     .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
     /* Faces are near the top of the source portraits: bias crop upward. */
-    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position: 50% -1%; }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position: 50% 1%; }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
@@ -1914,6 +1914,32 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const wr = m ? (w/m) : null;
     return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
   }
+  
+function _roundPct(p, decimals=0){
+  if (p == null || !isFinite(p)) return null;
+  const f = Math.pow(10, decimals);
+  return Math.round(p * f) / f;
+}
+
+function winRateFromRows(rows){
+  let m = 0, w = 0;
+  for (const r of (rows || [])){
+    m += 1;
+    if (r.win) w += 1;
+  }
+  return m ? (w / m) : null;
+}
+
+/**
+ * Taux de victoire "UI" = filtre phase/scope + cases contextuelles (vs mieux/moins, serrés)
+ * IMPORTANT : cette fonction doit être utilisée PARTOUT où on affiche "Tx victoire"
+ */
+function uiWinRate(lic){
+  const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+  const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
+  const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel); // ta fonction filtre-aware
+  return winRateFromRows(rows);
+}
 
   function segmentLabels(scope, phase, lics){
     lics = (lics && lics.length) ? lics : selected;

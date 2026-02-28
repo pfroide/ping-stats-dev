@@ -1,4 +1,3 @@
-
 (() => {
   const host = document.getElementById('graphics-root');
   if (!host) return;

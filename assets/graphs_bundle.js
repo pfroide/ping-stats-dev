@@ -136,12 +136,12 @@
     .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
-    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position: 50% 6%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position: 50% 2%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.5; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
     .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
     /* Faces are near the top of the source portraits: bias crop upward. */
-    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position: 50% 0%; }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position: 50% -6%; }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
@@ -152,7 +152,7 @@
     .g-sheet .hdr{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
     .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
     .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
-    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position: 50% 6%; }
+    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position: 50% 2%; }
     @media (max-width: 520px){
       .g-focushdr-content{ flex-direction:column; gap:10px; padding:12px; }
       .g-fplayer{ min-width:0; width:100%; max-width:none; }

@@ -136,11 +136,12 @@
     .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
-    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position: 50% 6%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
     .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
+    /* Faces are near the top of the source portraits: bias crop upward. */
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position: 50% 0%; }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
@@ -151,7 +152,7 @@
     .g-sheet .hdr{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
     .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
     .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
-    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
+    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position: 50% 6%; }
     @media (max-width: 520px){
       .g-focushdr-content{ flex-direction:column; gap:10px; padding:12px; }
       .g-fplayer{ min-width:0; width:100%; max-width:none; }
@@ -1878,6 +1879,42 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
   }
 
+
+  function _filteredRowsForSelection(lic, scope, phase){
+    // Filter-aware rows for Focus header/KPIs (scope + phase + context toggles)
+    const p = (lic && PLAYERS && PLAYERS[lic]) ? PLAYERS[lic] : null;
+    const arr = (p && p.timeline && p.timeline[scope]) ? p.timeline[scope] : [];
+    const ctxBetter = $ctxBetter && $ctxBetter.checked;
+    const ctxWorse  = $ctxWorse && $ctxWorse.checked;
+    const ctxClose  = $ctxClose && $ctxClose.checked;
+    const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
+
+    return arr.filter(x=>{
+      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      const d = Number(x.diff_pts||0);
+      if(!wantAllRel){
+        if(ctxBetter && !(d < 0)) return false;
+        if(ctxWorse  && !(d > 0)) return false;
+      }
+      if(ctxClose && !x.close_match) return false;
+      return true;
+    });
+  }
+
+  function _summaryFromRows(rows){
+    let m=0,w=0,per=0,con=0,pts=0;
+    for(const r of (rows||[])){
+      m += 1;
+      if(r.win) w += 1;
+      if(r.perf) per += 1;
+      if(r.contre) con += 1;
+      pts += Number(r.pointres||0);
+    }
+    const l = m - w;
+    const wr = m ? (w/m) : null;
+    return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
+  }
+
   function segmentLabels(scope, phase, lics){
     lics = (lics && lics.length) ? lics : selected;
     const lic = lics[0];
@@ -1963,32 +2000,35 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   // Heatmap removed.
 
-  
+
   function updateFocusHeader(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
     $focusHdr.style.display = 'block';
-    // Show/hide B side
+
+    const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+    const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
+
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
-    if(document.getElementById('gFocusCardB')) document.getElementById('gFocusCardB').style.display = hasB ? 'flex' : 'none';
+    // Shadow-DOM safe lookup
+    const cardB = (shadow && shadow.getElementById) ? shadow.getElementById('gFocusCardB') : null;
+    if(cardB) cardB.style.display = hasB ? 'flex' : 'none';
 
-    const pa = PLAYERS[aLic] || null;
-    const pb = hasB ? (PLAYERS[bLic] || null) : null;
+    const pa = (aLic && PLAYERS[aLic]) ? PLAYERS[aLic] : null;
+    const pb = (hasB && bLic && PLAYERS[bLic]) ? PLAYERS[bLic] : null;
 
     if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
-    function subText(p, lic){
-      if(!p) return '';
-      const s = p.summary || {};
-      const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
-      return `${m} matchs · ${w} V · ${l} D`;
+    function subText(lic){
+      const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel);
+      const s = _summaryFromRows(rows);
+      return `${s.matches} matchs · ${s.wins} V · ${s.losses} D`;
     }
-    if($focusSubA) $focusSubA.textContent = pa ? subText(pa, aLic) : '';
-    if($focusSubB) $focusSubB.textContent = pb ? subText(pb, bLic) : '';
+    if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
+    if($focusSubB) $focusSubB.textContent = (hasB && bLic) ? subText(bLic) : '';
 
-    // images
     if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);
     if($focusBgA) setImgWithFallback($focusBgA, aLic);
     if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
@@ -2013,7 +2053,7 @@ async function render(opts){
     if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
     const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
-    updateFocusHeader(aLic, bLic);
+    updateFocusHeader(aLic, bLic, ($scope && $scope.value) || 'tous', ($phase && $phase.value) || 'all');
     // Small fade to make transitions less harsh on mobile
     try{
       $canvas.style.transition = 'opacity 180ms ease';
@@ -2505,8 +2545,9 @@ async function render(opts){
       c.save();
       c.globalAlpha = 0.95;
       c.filter = 'blur(10px) brightness(0.55)';
-      if(aP && aP.img) drawCover(c, aP.img, 0, 0, w/2, headerH, 0.18);
-      if(bP && bP.img) drawCover(c, bP.img, w/2, 0, w/2, headerH, 0.18);
+      // Portraits are top-biased (faces near the top). Keep the same bias as CSS object-position.
+      if(aP && aP.img) drawCover(c, aP.img, 0, 0, w/2, headerH, 0.08);
+      if(bP && bP.img) drawCover(c, bP.img, w/2, 0, w/2, headerH, 0.08);
       c.restore();
       c.filter = 'none';
 
@@ -2538,7 +2579,7 @@ async function render(opts){
         roundRectPath(c, ax, ay, av, av, 16);
         c.clip();
         if(photo && photo.img){
-          drawCover(c, photo.img, ax, ay, av, av, 0.18);
+          drawCover(c, photo.img, ax, ay, av, av, 0.08);
         }else{
           c.fillStyle = 'rgba(0,0,0,0.22)';
           c.fillRect(ax,ay,av,av);
@@ -2556,7 +2597,10 @@ async function render(opts){
         // text
         const p = PLAYERS[lic] || null;
         const name = p ? (p.name || lic) : (lic || '—');
-        const s = p ? (p.summary || {}) : {};
+        // In Focus export, the header stats must follow current filters.
+        const scope = ($scope && $scope.value) ? $scope.value : 'tous';
+        const phase = ($phase && $phase.value) ? $phase.value : 'all';
+        const s = p ? summaryForSelection(lic, scope, phase) : {matches:0,wins:0,losses:0};
         const m = Number(s.matches||0), w1 = Number(s.wins||0), l1 = Number(s.losses||0);
         const sub = p ? `${m} matchs · ${w1} V · ${l1} D` : '';
 

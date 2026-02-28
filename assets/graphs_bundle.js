@@ -2012,7 +2012,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
     // Shadow-DOM safe lookup
-    const cardB = (shadow && shadow.getElementById) ? shadow.getElementById('gFocusCardB') : null;
+    const cardB = (root && root.getElementById) ? root.getElementById('gFocusCardB') : null;
     if(cardB) cardB.style.display = hasB ? 'flex' : 'none';
 
     const pa = (aLic && PLAYERS[aLic]) ? PLAYERS[aLic] : null;

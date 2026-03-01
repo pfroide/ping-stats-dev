@@ -147,15 +147,34 @@
     .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
-    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
-    .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
-    .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
-    .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    .g-avatar img{ width:80%; height:100%; align-items:center; object-fit:cover; object-position:50% 1%; }
+	.g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 10%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
+    .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:12px; padding:10px 10px; min-height:96px; }
+    .g-fplayer{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:200px; max-width:340px; }
+	/* Slot avatar */
+.g-avatar{
+  width: 56px;              /* réduit (ex: 64 -> 56) */
+  height: 56px;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+/* Image */
+.g-avatar img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 1%;  /* ajuste: -2% à -8% selon tes avatars */
+  display: block;
+}
+
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
-    .g-vs{ font-weight:900; letter-spacing:1px; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.30); border:1px solid rgba(255,255,255,0.08); }
+    .g-vs{ font-weight:900; letter-spacing:1px; padding:5px 9px; border-radius:999px; background:rgba(0,0,0,0.30); border:1px solid rgba(255,255,255,0.08); }
     .g-x{ position:absolute; top:10px; right:10px; width:36px; height:36px; border-radius:12px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.08); color:#e9eef8; cursor:pointer; }
     .g-x:hover{ background:rgba(0,0,0,0.44); }
 
@@ -498,7 +517,9 @@ root.appendChild(style);
     if(!lic) return;
     const p = PLAYERS[lic];
     if(!p) return;
-    const s = p.summary || {};
+    const scopeSel0 = ($scope && $scope.value) ? $scope.value : 'tous';
+    const phaseSel0 = normPhase(($phase && $phase.value) ? $phase.value : 'all');
+    const s = summaryForSelection(lic, scopeSel0, phaseSel0) || {};
     $sheetName.textContent = (p.name || lic);
     const m = Number(s.matches||0);
     const w = Number(s.wins||0);
@@ -531,8 +552,8 @@ root.appendChild(style);
       syncSheetCanvasSize();
       const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
       const tlAll = (p.timeline && (p.timeline[scopeSel] || p.timeline['tous'] || p.timeline['indiv'] || p.timeline['equipe'])) || [];
-      const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
-      const tl = (tlAll || []).filter(r => (phaseSel==='all' || (''+r.phase)==phaseSel));
+      const phaseSel = normPhase(($phase && $phase.value) ? $phase.value : 'all');
+      const tl = (tlAll || []).filter(r => (phaseSel==='all' || normPhase(r.phase)===phaseSel));
 
       // Segment starts (first pts_start of each segment)
       const segMap = new Map();
@@ -543,7 +564,7 @@ root.appendChild(style);
         if(!segMap.has(key) && ps!=null && isFinite(ps)){
           let lab = '';
           if(sid!=null && isFinite(sid)){
-            if(phaseSel==='2') lab = 'S' + Math.max(1, sid-4);
+            if(phaseSel==='p2') lab = 'S' + Math.max(1, sid-4);
             else lab = 'S' + sid;
           }else{
             lab = cleanXLabel(r.segment_nom||'');
@@ -580,7 +601,7 @@ root.appendChild(style);
       }
       push(firstIdx); push(lastIdx); push(minIdx); push(maxIdx);
 
-      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs});
+      drawChartOn($sheetCanvas, labels, series, {maxLabels:4, forceMinMax:true, keyIdxs:keyIdxs, metric:'fftt_points', includeZero:false, minRange:60});
 
       // details table (match by match)
       const rows = (tl || []).slice().reverse().slice(0, 60);
@@ -1501,11 +1522,23 @@ function hashHue(s){
     for(const s of series) for(const v of s.values) if(v!=null && isFinite(v)) all.push(v);
     let min = all.length? Math.min(...all):0;
     let max = all.length? Math.max(...all):1;
-    // Always show y=0 baseline on line charts
-    min = Math.min(min, 0);
-    max = Math.max(max, 0);
+    // Include y=0 baseline only when requested (default true)
+    const includeZero = (opts.includeZero !== false);
+    if(includeZero){
+      min = Math.min(min, 0);
+      max = Math.max(max, 0);
+    }
     let pad = (max-min)*0.08;
     if(!isFinite(pad) || pad<=0) pad = 1;
+    const minRange = (opts.minRange!=null && isFinite(opts.minRange)) ? Number(opts.minRange) : null;
+    if(minRange!=null && isFinite(minRange)){
+      const span = (max-min);
+      if(span < minRange){
+        const mid = (max+min)/2;
+        min = mid - minRange/2;
+        max = mid + minRange/2;
+      }
+    }
     let ymin = min - pad;
     let ymax = max + pad;
     const n=labels.length || 1;
@@ -1976,7 +2009,6 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   
   
-  
   function updateFocusHeader(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
@@ -1997,8 +2029,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
     function subText(lic){
-      if(!lic) return '';
-      const s = summaryForSelection(lic, scopeSel, phaseSel);
+      const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel);
+      const s = _summaryFromRows(rows);
       return `${s.matches} matchs · ${s.wins} V · ${s.losses} D`;
     }
     if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
@@ -2009,7 +2041,6 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
     if($focusBgB) setImgWithFallback($focusBgB, bLic);
   }
-
 
 
 async function render(opts){

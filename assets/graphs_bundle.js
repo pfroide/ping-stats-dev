@@ -2069,8 +2069,10 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
     function subText(p, lic){
-      if(!p) return '';
-      const s = p.summary || {};
+      if(!lic) return '';
+      const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+      const phaseSel = normPhase(($phase && $phase.value) ? $phase.value : 'all');
+      const s = summaryForSelection(lic, scopeSel, phaseSel) || {};
       const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
       return `${m} matchs · ${w} V · ${l} D`;
     }

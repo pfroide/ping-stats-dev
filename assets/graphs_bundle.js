@@ -2009,41 +2009,42 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   
   
-  function updateFocusHeader(aLic, bLic){
-    if(!$focusHdr) return;
-    if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
-    $focusHdr.style.display = 'block';
-    if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
-	
-    const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
-    const phaseSel = normPhase(($phase && $phase.value) ? $phase.value : 'all');
+  
+function updateFocusHeader(aLic, bLic){
+  if(!$focusHdr) return;
+  if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
+  $focusHdr.style.display = 'block';
 
-    const hasB = !!(bLic && PLAYERS && PLAYERS[bLic]);
-    if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
-    const cardB = (root && root.getElementById) ? root.getElementById('gFocusCardB') : null;
-    if(cardB) cardB.style.display = hasB ? 'flex' : 'none';
+  const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+  const phaseSel = normPhase(($phase && $phase.value) ? $phase.value : 'all');
 
-    const pa = (aLic && PLAYERS && PLAYERS[aLic]) ? PLAYERS[aLic] : null;
-    const pb = (hasB && bLic && PLAYERS && PLAYERS[bLic]) ? PLAYERS[bLic] : null;
+  const hasB = !!(bLic && PLAYERS && PLAYERS[bLic]);
+  if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
+  const cardB = (root && root.getElementById) ? root.getElementById('gFocusCardB') : null;
+  if(cardB) cardB.style.display = hasB ? 'flex' : 'none';
 
-    if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
-    if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
+  const pa = (aLic && PLAYERS && PLAYERS[aLic]) ? PLAYERS[aLic] : null;
+  const pb = (hasB && bLic && PLAYERS && PLAYERS[bLic]) ? PLAYERS[bLic] : null;
 
-    function subText(lic){
-      const s = summaryForSelection(lic, scopeSel, phaseSel) || {};
-      const m = Number(s.matches || 0);
-      const w = Number(s.wins || 0);
-      const l = Number(s.losses || 0);
-      return `${m} matchs · ${w} V · ${l} D`;	  
-    }
-    if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
-    if($focusSubB) $focusSubB.textContent = (hasB && bLic) ? subText(bLic) : '';
+  if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
+  if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
-    if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);
-    if($focusBgA) setImgWithFallback($focusBgA, aLic);
-    if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
-    if($focusBgB) setImgWithFallback($focusBgB, bLic);
+  function subText(lic){
+    const s = summaryForSelection(lic, scopeSel, phaseSel) || {};
+    const m = Number(s.matches || 0);
+    const w = Number(s.wins || 0);
+    const l = Number(s.losses || 0);
+    return `${m} matchs · ${w} V · ${l} D`;
   }
+  if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
+  if($focusSubB) $focusSubB.textContent = (hasB && bLic) ? subText(bLic) : '';
+
+  if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);
+  if($focusBgA) setImgWithFallback($focusBgA, aLic);
+  if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
+  if($focusBgB) setImgWithFallback($focusBgB, bLic);
+}
+
 
 
 async function render(opts){

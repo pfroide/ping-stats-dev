@@ -5,6 +5,17 @@
   fallback.style.cssText = 'padding:10px;border-radius:12px;background:rgba(255,70,70,.12);color:#ffd2d2;font-size:14px;display:none';
   host.appendChild(fallback);
   try {
+  function normPhase(v){
+    if(v==null) return 'all';
+    const s = (''+v).toLowerCase().trim();
+    if(s==='all' || s==='toutes phases' || s==='toutes') return 'all';
+    if(s==='p1' || s==='phase 1' || s==='1') return 'p1';
+    if(s==='p2' || s==='phase 2' || s==='2') return 'p2';
+    if(s.includes('1')) return 'p1';
+    if(s.includes('2')) return 'p2';
+    return s;
+  }
+
 
   // Shadow DOM to prevent CSS regressions
   const root = host.attachShadow({ mode: 'open' });
@@ -139,7 +150,7 @@
     .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
-    .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
+    .g-avatar{ width:60px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
     .g-avatar img{ width:80%; height:100%; object-fit:cover; object-position:50% 1%; }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1794,7 +1805,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxClose  = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      if(!(normPhase(phase)==='all' || normPhase(x.phase)===normPhase(phase))) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
@@ -1931,7 +1942,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxClose = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      if(!(normPhase(phase)==='all' || normPhase(x.phase)===normPhase(phase))) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
@@ -1964,36 +1975,40 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
   // Heatmap removed.
 
   
+  
   function updateFocusHeader(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
     $focusHdr.style.display = 'block';
-    // Show/hide B side
-    const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
-    if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
-    if(document.getElementById('gFocusCardB')) document.getElementById('gFocusCardB').style.display = hasB ? 'flex' : 'none';
 
-    const pa = PLAYERS[aLic] || null;
-    const pb = hasB ? (PLAYERS[bLic] || null) : null;
+    const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
+    const phaseSel = normPhase(($phase && $phase.value) ? $phase.value : 'all');
+
+    const hasB = !!(bLic && PLAYERS && PLAYERS[bLic]);
+    if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
+    const cardB = (root && root.getElementById) ? root.getElementById('gFocusCardB') : null;
+    if(cardB) cardB.style.display = hasB ? 'flex' : 'none';
+
+    const pa = (aLic && PLAYERS && PLAYERS[aLic]) ? PLAYERS[aLic] : null;
+    const pb = (hasB && bLic && PLAYERS && PLAYERS[bLic]) ? PLAYERS[bLic] : null;
 
     if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
-    function subText(p, lic){
-      if(!p) return '';
-      const s = p.summary || {};
-      const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
-      return `${m} matchs · ${w} V · ${l} D`;
+    function subText(lic){
+      const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel);
+      const s = _summaryFromRows(rows);
+      return `${s.matches} matchs · ${s.wins} V · ${s.losses} D`;
     }
-    if($focusSubA) $focusSubA.textContent = pa ? subText(pa, aLic) : '';
-    if($focusSubB) $focusSubB.textContent = pb ? subText(pb, bLic) : '';
+    if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
+    if($focusSubB) $focusSubB.textContent = (hasB && bLic) ? subText(bLic) : '';
 
-    // images
     if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);
     if($focusBgA) setImgWithFallback($focusBgA, aLic);
     if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
     if($focusBgB) setImgWithFallback($focusBgB, bLic);
   }
+
 
 async function render(opts){
     opts = opts || {};

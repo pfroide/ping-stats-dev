@@ -1883,7 +1883,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxClose  = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      const ph = normPhase(phase);
+	  if(!(ph==='all' || normPhase(x.phase)===ph)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
@@ -2020,7 +2021,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxClose = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
+      const ph = normPhase(phase);
+	  if(!(ph==='all' || normPhase(x.phase)===ph)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;

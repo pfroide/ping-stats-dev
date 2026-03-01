@@ -136,12 +136,11 @@
     .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
-    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position: 50% 2%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.5; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
     .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    /* Faces are near the top of the source portraits: bias crop upward. */
-    .g-avatar img{ width:80%; height:100%; object-fit:cover; object-position: 50% 3%; }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
@@ -152,7 +151,7 @@
     .g-sheet .hdr{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
     .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
     .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
-    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position: 50% 2%; }
+    .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     @media (max-width: 520px){
       .g-focushdr-content{ flex-direction:column; gap:10px; padding:12px; }
       .g-fplayer{ min-width:0; width:100%; max-width:none; }
@@ -1879,68 +1878,6 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
   }
 
-
-  function _filteredRowsForSelection(lic, scope, phase){
-    // Filter-aware rows for Focus header/KPIs (scope + phase + context toggles)
-    const p = (lic && PLAYERS && PLAYERS[lic]) ? PLAYERS[lic] : null;
-    const arr = (p && p.timeline && p.timeline[scope]) ? p.timeline[scope] : [];
-    const ctxBetter = $ctxBetter && $ctxBetter.checked;
-    const ctxWorse  = $ctxWorse && $ctxWorse.checked;
-    const ctxClose  = $ctxClose && $ctxClose.checked;
-    const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
-
-    return arr.filter(x=>{
-      if(!(phase==='all' || (''+x.phase)==phase)) return false;
-      const d = Number(x.diff_pts||0);
-      if(!wantAllRel){
-        if(ctxBetter && !(d < 0)) return false;
-        if(ctxWorse  && !(d > 0)) return false;
-      }
-      if(ctxClose && !x.close_match) return false;
-      return true;
-    });
-  }
-
-  function _summaryFromRows(rows){
-    let m=0,w=0,per=0,con=0,pts=0;
-    for(const r of (rows||[])){
-      m += 1;
-      if(r.win) w += 1;
-      if(r.perf) per += 1;
-      if(r.contre) con += 1;
-      pts += Number(r.pointres||0);
-    }
-    const l = m - w;
-    const wr = m ? (w/m) : null;
-    return {matches:m,wins:w,losses:l,win_rate:wr,perfs:per,contres:con,pointres_total:pts};
-  }
-  
-function _roundPct(p, decimals=0){
-  if (p == null || !isFinite(p)) return null;
-  const f = Math.pow(10, decimals);
-  return Math.round(p * f) / f;
-}
-
-function winRateFromRows(rows){
-  let m = 0, w = 0;
-  for (const r of (rows || [])){
-    m += 1;
-    if (r.win) w += 1;
-  }
-  return m ? (w / m) : null;
-}
-
-/**
- * Taux de victoire "UI" = filtre phase/scope + cases contextuelles (vs mieux/moins, serrés)
- * IMPORTANT : cette fonction doit être utilisée PARTOUT où on affiche "Tx victoire"
- */
-function uiWinRate(lic){
-  const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
-  const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
-  const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel); // ta fonction filtre-aware
-  return winRateFromRows(rows);
-}
-
   function segmentLabels(scope, phase, lics){
     lics = (lics && lics.length) ? lics : selected;
     const lic = lics[0];
@@ -2026,35 +1963,32 @@ function uiWinRate(lic){
 
   // Heatmap removed.
 
-
+  
   function updateFocusHeader(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
     $focusHdr.style.display = 'block';
-
-    const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
-    const phaseSel = ($phase && $phase.value) ? $phase.value : 'all';
-
+    // Show/hide B side
     const hasB = !!(bLic && PLAYER_INDEX[bLic] && PLAYERS[bLic]);
     if($focusVS) $focusVS.style.display = hasB ? 'inline-flex' : 'none';
-    // Shadow-DOM safe lookup
-    const cardB = (root && root.getElementById) ? root.getElementById('gFocusCardB') : null;
-    if(cardB) cardB.style.display = hasB ? 'flex' : 'none';
+    if(document.getElementById('gFocusCardB')) document.getElementById('gFocusCardB').style.display = hasB ? 'flex' : 'none';
 
-    const pa = (aLic && PLAYERS[aLic]) ? PLAYERS[aLic] : null;
-    const pb = (hasB && bLic && PLAYERS[bLic]) ? PLAYERS[bLic] : null;
+    const pa = PLAYERS[aLic] || null;
+    const pb = hasB ? (PLAYERS[bLic] || null) : null;
 
     if($focusNameA) $focusNameA.textContent = pa ? (pa.name || aLic) : (aLic || '—');
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
-    function subText(lic){
-      const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel);
-      const s = _summaryFromRows(rows);
-      return `${s.matches} matchs · ${s.wins} V · ${s.losses} D`;
+    function subText(p, lic){
+      if(!p) return '';
+      const s = p.summary || {};
+      const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
+      return `${m} matchs · ${w} V · ${l} D`;
     }
-    if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
-    if($focusSubB) $focusSubB.textContent = (hasB && bLic) ? subText(bLic) : '';
+    if($focusSubA) $focusSubA.textContent = pa ? subText(pa, aLic) : '';
+    if($focusSubB) $focusSubB.textContent = pb ? subText(pb, bLic) : '';
 
+    // images
     if($focusAvatarA) setImgWithFallback($focusAvatarA, aLic);
     if($focusBgA) setImgWithFallback($focusBgA, aLic);
     if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
@@ -2079,7 +2013,7 @@ async function render(opts){
     if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
     const bLic = ($compare && $compare.value) ? $compare.value : '';
     if(bLic) await ensurePlayer(bLic);
-    updateFocusHeader(aLic, bLic, ($scope && $scope.value) || 'tous', ($phase && $phase.value) || 'all');
+    updateFocusHeader(aLic, bLic);
     // Small fade to make transitions less harsh on mobile
     try{
       $canvas.style.transition = 'opacity 180ms ease';
@@ -2491,366 +2425,225 @@ async function render(opts){
   if($ctxClose) $ctxClose.addEventListener('change', ctxChanged);
   if($scroll) $scroll.addEventListener('input', ()=> render());
 
-  $exportBtn.addEventListener('click', async ()=>{
-    const mode = $mode.value;
-    const viewRaw = $view.value;
-    const displaySel = ($display && $display.value) ? $display.value : 'charts';
-    isTableMode = (displaySel === 'tables');
-    const view = isTableMode ? 'overlay' : viewRaw;
-    const now = new Date();
-    const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');
-    const safe = (s)=> String(s||'').normalize('NFKD').replace(/[^\w\d\- ]+/g,'').trim().replace(/\s+/g,'_').slice(0,60);
+  
+  // ============================================================
+  // PNG EXPORT (robust): compose from existing rendered canvases
+  // ============================================================
+  async function exportPNG(){
+    // Stabiliser layout & rendu
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    function dl(canvas, name){
-      try{
-        const url = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name + '.png';
-        a.click();
-      }catch(e){ console.warn(e); }
-    }
+    const spec = buildExportSpec();
+    if(!spec || !spec.canvases || !spec.canvases.length) return;
 
-    // Like CSS object-fit: cover, but with a vertical bias.
-    // biasY in [0..1] (0 = keep top, 0.5 = center, 1 = keep bottom)
-    function drawCover(c, img, x, y, w, h, biasY){
-      const iw = img.width || 1, ih = img.height || 1;
-      const ir = iw / ih, tr = w / h;
-      const by = (biasY==null || !isFinite(biasY)) ? 0.5 : Math.max(0, Math.min(1, biasY));
-      let sx=0, sy=0, sw=iw, sh=ih;
-      if(ir > tr){
-        // crop width
-        sh = ih;
-        sw = Math.max(1, Math.floor(sh * tr));
-        sx = Math.floor((iw - sw) / 2);
-      }else{
-        // crop height (use bias)
-        sw = iw;
-        sh = Math.max(1, Math.floor(sw / tr));
-        sy = Math.floor((ih - sh) * by);
-      }
-      c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-    }
+    const out = renderExportCanvas(spec);
+    if(!out || !out.canvas) return;
 
-    function roundRectPath(c, x, y, w, h, r){
-      const rr = Math.min(r, w/2, h/2);
-      c.beginPath();
-      c.moveTo(x+rr, y);
-      c.arcTo(x+w, y, x+w, y+h, rr);
-      c.arcTo(x+w, y+h, x, y+h, rr);
-      c.arcTo(x, y+h, x, y, rr);
-      c.arcTo(x, y, x+w, y, rr);
-      c.closePath();
-    }
+    await downloadCanvasAsPNG(out.canvas, spec.filename || "export.png");
+  }
 
-    async function buildCompositeFocus(){
-      const base = $canvas;
-      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
-      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 420);
-      const headerH = 140;
-      const pad = 12;
+  function buildExportSpec(){
+    const mode = ($mode && $mode.value) ? $mode.value : "Graphiques";
+    const view = ($view && $view.value) ? $view.value : "superposée";
+    const scope = ($scope && $scope.value) ? $scope.value : "tous";
+    const phase = ($phase && $phase.value) ? $phase.value : "all";
 
-      const aLic = selected[0] || '';
-    if(!aLic || !PLAYER_INDEX[aLic]){ setTitleText('Graphiques'); $info.textContent='Sélectionne un joueur.'; clearCanvas(); return; }
-      const bLic = ($compare && $compare.value) ? $compare.value : '';
-      const aP = await getPhoto(aLic);
-      const bP = await getPhoto(bLic);
+    const aLic = ($player && $player.value) ? $player.value : null;
+    const bLic = ($compare && $compare.value) ? $compare.value : null;
 
-      const out = document.createElement('canvas');
-      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
-      out.width = Math.floor(w * dpr);
-      out.height = Math.floor((headerH + pad + h) * dpr);
-      const c = out.getContext('2d');
-      c.setTransform(dpr,0,0,dpr,0,0);
-
-      // bg
-      c.fillStyle = '#0b1220';
-      c.fillRect(0,0,w,headerH+pad+h);
-
-      // blurred split background
-      c.save();
-      c.globalAlpha = 0.95;
-      c.filter = 'blur(10px) brightness(0.55)';
-      // Portraits are top-biased (faces near the top). Keep the same bias as CSS object-position.
-      if(aP && aP.img) drawCover(c, aP.img, 0, 0, w/2, headerH, 0.08);
-      if(bP && bP.img) drawCover(c, bP.img, w/2, 0, w/2, headerH, 0.08);
-      c.restore();
-      c.filter = 'none';
-
-      // shade
-      c.fillStyle = 'rgba(0,0,0,0.25)';
-      c.fillRect(0,0,w,headerH);
-
-      // cards
-      const cardW = Math.min(360, Math.floor((w - 3*pad) / 2));
-      const cardH = 92;
-      const y = Math.floor((headerH - cardH) / 2);
-      const xA = Math.max(pad, Math.floor((w/2 - cardW) / 2));
-      const xB = Math.min(w - pad - cardW, Math.floor(w/2 + (w/2 - cardW) / 2));
-
-      function drawCard(x, lic, photo, color){
-        // box
-        c.save();
-        c.fillStyle = 'rgba(9,14,25,0.72)';
-        c.strokeStyle = 'rgba(255,255,255,0.08)';
-        c.lineWidth = 1;
-        roundRectPath(c, x, y, cardW, cardH, 16);
-        c.fill(); c.stroke();
-        c.restore();
-
-        // avatar
-        const av = 64;
-        const ax = x + 12, ay = y + Math.floor((cardH - av)/2);
-        c.save();
-        roundRectPath(c, ax, ay, av, av, 16);
-        c.clip();
-        if(photo && photo.img){
-          drawCover(c, photo.img, ax, ay, av, av, 0.08);
-        }else{
-          c.fillStyle = 'rgba(0,0,0,0.22)';
-          c.fillRect(ax,ay,av,av);
-        }
-        c.restore();
-
-        // glow border
-        c.save();
-        c.strokeStyle = color || 'rgba(255,255,255,0.12)';
-        c.lineWidth = 2;
-        roundRectPath(c, ax, ay, av, av, 16);
-        c.stroke();
-        c.restore();
-
-        // text
-        const p = PLAYERS[lic] || null;
-        const name = p ? (p.name || lic) : (lic || '—');
-        // In Focus export, the header stats must follow current filters.
-        const scope = ($scope && $scope.value) ? $scope.value : 'tous';
-        const phase = ($phase && $phase.value) ? $phase.value : 'all';
-        const s = p ? summaryForSelection(lic, scope, phase) : {matches:0,wins:0,losses:0};
-        const m = Number(s.matches||0), w1 = Number(s.wins||0), l1 = Number(s.losses||0);
-        const sub = p ? `${m} matchs · ${w1} V · ${l1} D` : '';
-
-        c.fillStyle = '#e9eef8';
-        c.font = '800 15px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        c.textBaseline = 'top';
-        c.fillText(name, x + 12 + av + 10, y + 22);
-        c.fillStyle = 'rgba(255,255,255,0.75)';
-        c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        c.fillText(sub, x + 12 + av + 10, y + 44);
-      }
-
-      drawCard(xA, aLic, aP, 'rgba(120,200,255,0.55)');
-      if(bLic){
-        drawCard(xB, bLic, bP, 'rgba(255,160,120,0.55)');
-        // VS
-        c.save();
-        c.fillStyle = 'rgba(0,0,0,0.32)';
-        c.strokeStyle = 'rgba(255,255,255,0.08)';
-        c.lineWidth = 1;
-        const vsW=52, vsH=28;
-        const vx = Math.floor((w - vsW)/2), vy = Math.floor((headerH - vsH)/2);
-        roundRectPath(c, vx, vy, vsW, vsH, 14);
-        c.fill(); c.stroke();
-        c.fillStyle = '#e9eef8';
-        c.font = '900 13px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        c.textBaseline = 'middle';
-        c.textAlign = 'center';
-        c.fillText('VS', vx + vsW/2, vy + vsH/2);
-        c.restore();
-      }
-
-      // graph
-      c.drawImage(base, 0, headerH + pad, w, h);
-      return out;
-    }
-
-    async function buildCompositeSheet(){
-      const base = $sheetCanvas;
-      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
-      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 340);
-      const headerH = 150;
-      const pad = 12;
-
-      // Try to infer current lic from sheet name match; fallback: selected[0]
-      const lic = selected[0] || '';
-      const photo = await getPhoto(lic);
-
-      const out = document.createElement('canvas');
-      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
-      out.width = Math.floor(w * dpr);
-      out.height = Math.floor((headerH + pad + h) * dpr);
-      const c = out.getContext('2d');
-      c.setTransform(dpr,0,0,dpr,0,0);
-
-      c.fillStyle = '#0b1220';
-      c.fillRect(0,0,w,headerH+pad+h);
-
-      // photo panel
-      const phW = 110, phH = 140;
-      const px = pad, py = Math.floor((headerH - phH)/2);
-      c.save();
-      roundRectPath(c, px, py, phW, phH, 16);
-      c.clip();
-      if(photo && photo.img) drawCover(c, photo.img, px, py, phW, phH, 0.18);
-      else { c.fillStyle='rgba(0,0,0,0.22)'; c.fillRect(px,py,phW,phH); }
-      c.restore();
-      c.strokeStyle='rgba(255,255,255,0.10)'; c.lineWidth=1;
-      roundRectPath(c, px, py, phW, phH, 16); c.stroke();
-
-      const name = $sheetName ? ($sheetName.textContent||'') : '';
-      const sub  = $sheetSub ? ($sheetSub.textContent||'') : '';
-      c.fillStyle='#e9eef8';
-      c.font='800 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-      c.textBaseline='top';
-      c.fillText(name, px+phW+12, py+10);
-      c.fillStyle='rgba(255,255,255,0.75)';
-      c.font='12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-      c.fillText(sub, px+phW+12, py+40);
-
-      c.drawImage(base, 0, headerH + pad, w, h);
-      return out;
-    }
-
-    async function buildCompositeRadar(){
-      const base = $canvas;
-      const w = base.__cw || Math.floor(base.getBoundingClientRect().width || 980);
-      const h = base.__ch || Math.floor(base.getBoundingClientRect().height || 420);
-      const pad = 12;
-      const headerH = 54;
-      const legendH = 34;
-      const statsH = 120;
-
-      const aLic = selected[0] || '';
-      const bLic = ($compare && $compare.value) ? $compare.value : '';
-      const pv = ($phase && $phase.value) ? (''+$phase.value) : 'all';
-      const phaseSel = (pv==='1' || pv==='p1') ? '1' : ((pv==='2' || pv==='p2') ? '2' : 'all');
-      const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
-
-      const out = document.createElement('canvas');
-      const dpr = Math.max(2, Math.round(window.devicePixelRatio || 1));
-      out.width = Math.floor(w * dpr);
-      out.height = Math.floor((headerH + legendH + pad + h + statsH) * dpr);
-      const c = out.getContext('2d');
-      c.setTransform(dpr,0,0,dpr,0,0);
-
-      // bg
-      c.fillStyle = '#0b1220';
-      c.fillRect(0,0,w,(headerH + legendH + pad + h + statsH));
-
-      // title
-      const title = ($title && ($title.textContent||'').trim()) ? $title.textContent.trim() : 'Kiviat profil';
-      c.fillStyle = '#e9eef8';
-      c.font = '900 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-      c.textBaseline = 'middle';
-      c.fillText(title, pad, Math.floor(headerH/2));
-
-      // legend (HTML -> canvas)
-      c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-      c.fillStyle = 'rgba(255,255,255,0.80)';
-      let lx = pad, ly = headerH + 8;
-      const items = $legend ? Array.from($legend.querySelectorAll('.it')) : [];
-      for(const it of items){
-        const sw = it.querySelector('.sw');
-        const label = (it.textContent||'').trim();
-        const col = sw ? (sw.style.background || '#9aa4b2') : '#9aa4b2';
-        c.fillStyle = col;
-        c.fillRect(lx, ly+4, 12, 12);
-        c.fillStyle = 'rgba(255,255,255,0.82)';
-        c.fillText(label, lx+16, ly+14);
-        lx += 16 + c.measureText(label).width + 18;
-        if(lx > w - 220){ lx = pad; ly += 18; }
-      }
-
-      // graph
-      c.drawImage(base, 0, headerH + legendH + pad, w, h);
-
-      // stats cards (phase-aware)
-      const sa = summaryForSelection(aLic, scopeSel, phaseSel);
-      const sb = bLic ? summaryForSelection(bLic, scopeSel, phaseSel) : null;
-
-      const fmtPct = (x)=> (x==null||!isFinite(x)) ? '—' : (Math.round(x*100) + '%');
-      const fmtInt = (x)=> (x==null||!isFinite(x)) ? '—' : String(Math.round(x));
-      const fmtPts = (x)=> (x==null||!isFinite(x)) ? '—' : fmtNum(x);
-
-      const sY = headerH + legendH + pad + h + 14;
-      const cardW = Math.floor((w - pad*4)/3);
-      const cardH = 86;
-      const cards = [
-        {t:'Tx victoire', a: fmtPct(sa.win_rate), b: sb?fmtPct(sb.win_rate):'—', d: sb?(`Δ ${fmtPct((sa.win_rate||0)-(sb.win_rate||0))}`):''},
-        {t:'Perfs / Contres', a: `${fmtInt(sa.perfs)} / ${fmtInt(sa.contres)}`, b: sb?(`${fmtInt(sb.perfs)} / ${fmtInt(sb.contres)}`):'—', d: sb?(`Δ ${(fmtInt((sa.perfs||0)-(sb.perfs||0)))} / ${(fmtInt((sa.contres||0)-(sb.contres||0)))}`):''},
-        {t:'Points FFTT', a: fmtPts(sa.pointres_total), b: sb?fmtPts(sb.pointres_total):'—', d: sb?(`Δ ${fmtPts((sa.pointres_total||0)-(sb.pointres_total||0))}`):''},
-      ];
-
-      for(let i=0;i<cards.length;i++){
-        const x = pad + i*(cardW + pad);
-        const y = sY;
-        c.save();
-        c.fillStyle = 'rgba(9,14,25,0.72)';
-        c.strokeStyle = 'rgba(255,255,255,0.08)';
-        c.lineWidth = 1;
-        roundRectPath(c, x, y, cardW, cardH, 14);
-        c.fill(); c.stroke();
-        c.restore();
-
-        const cc = cards[i];
-        c.fillStyle = 'rgba(255,255,255,0.75)';
-        c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        c.textBaseline = 'top';
-        c.fillText(cc.t, x+10, y+10);
-
-        c.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        c.fillStyle = COLOR_A;
-        c.fillText(cc.a, x+10, y+34);
-        c.fillStyle = 'rgba(255,255,255,0.65)';
-        c.font = '800 12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        c.fillText('vs', x+10 + c.measureText(cc.a).width + 10, y+36);
-        c.fillStyle = COLOR_B;
-        c.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        c.fillText(cc.b, x+10 + c.measureText(cc.a).width + 34, y+34);
-
-        if(cc.d){
-          c.fillStyle = 'rgba(255,255,255,0.58)';
-          c.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-          c.fillText(cc.d, x+10, y+62);
-        }
-      }
-
-      return out;
-    }
-
-
-    // If we are in mini-graphs view, keep current behavior (multiple downloads)
-    if(view==='multiples' && $multi.style.display!=='none'){
-      const canv = Array.from($multi.querySelectorAll('canvas'));
-      canv.forEach((cv,i)=>{
-        const titleEl = cv.parentElement && cv.parentElement.querySelector('div');
-        const who = titleEl ? titleEl.textContent : `player_${i+1}`;
-        const fname = safe(`graph_${mode}_${who}_${stamp}`);
-        window.setTimeout(()=> dl(cv, fname), i*250);
+    // visible canvases in shadow root
+    const cvs = Array.from(root.querySelectorAll("canvas"))
+      .filter(c=>{
+        if(!c || !c.width || !c.height) return false;
+        const r = c.getBoundingClientRect();
+        return r && r.width > 8 && r.height > 8;
       });
-      return;
+
+    if(!cvs.length) return null;
+
+    // sort by visible area (fallback to pixel area)
+    cvs.sort((a,b)=>{
+      const ra=a.getBoundingClientRect(), rb=b.getBoundingClientRect();
+      const aa=(ra.width*ra.height) || (a.width*a.height);
+      const bb=(rb.width*rb.height) || (b.width*b.height);
+      return bb-aa;
+    });
+
+    const wantGrid = (view === "mini-graphs" && cvs.length > 1);
+    const sources = wantGrid ? cvs : [cvs[0]];
+
+    return {
+      filename: filenameForState(mode, view, aLic, bLic, phase, scope),
+      header: {
+        title: mode,
+        subtitle: subtitleForState(phase, scope),
+        a: aLic ? (PLAYERS[aLic]?.name || aLic) : "—",
+        b: bLic ? (PLAYERS[bLic]?.name || bLic) : null,
+      },
+      canvases: sources,
+      layout: wantGrid ? "grid" : "stack",
+      bg: "#081423",
+      padding: 24,
+      gap: 18,
+      maxWidth: 1400,
+      scale: Math.min(2, window.devicePixelRatio || 1),
+    };
+  }
+
+  function filenameForState(mode, view, aLic, bLic, phase, scope){
+    const p = (phase === "all") ? "all" : phase;
+    const s = scope || "tous";
+    const ab = bLic ? `${aLic}_vs_${bLic}` : `${aLic || "player"}`;
+    return `${mode}_${view}_${ab}_${p}_${s}.png`.replace(/\s+/g,"_");
+  }
+
+  function subtitleForState(phase, scope){
+    const p = (phase === "all") ? "Toutes phases" : (phase === "p1" ? "Phase 1" : "Phase 2");
+    const s = (scope === "tous") ? "Tous" : (scope === "indiv" ? "Indiv" : "Equipe");
+    return `${p} · ${s}`;
+  }
+
+  function renderExportCanvas(spec){
+    const px = spec.padding || 24;
+    const gap = spec.gap || 16;
+    const scale = spec.scale || 1;
+
+    const sources = spec.canvases || [];
+    if(!sources.length) return null;
+
+    const maxW = spec.maxWidth || 1400;
+
+    // target content width (in CSS pixels), then upscale by "scale"
+    const wCss = Math.min(maxW, Math.max(...sources.map(c => c.getBoundingClientRect().width || c.width || 0)));
+    const headerH = 120;
+
+    let outWcss = wCss + px*2;
+    let outHcss = headerH + px;
+
+    let placements = [];
+
+    if(spec.layout === "grid"){
+      const cols = (wCss >= 900) ? 2 : 1;
+      const cellW = Math.floor((wCss - gap*(cols-1)) / cols);
+
+      // compute scaled heights per source
+      const heights = sources.map(c=>{
+        const w0 = c.getBoundingClientRect().width || c.width;
+        const h0 = c.getBoundingClientRect().height || c.height;
+        const k = w0 ? (cellW / w0) : 1;
+        return Math.floor(h0 * k);
+      });
+
+      const rows = Math.ceil(sources.length / cols);
+
+      // measure total height
+      let idx=0;
+      let y = headerH + px;
+      for(let r=0;r<rows;r++){
+        let rowH = 0;
+        for(let c=0;c<cols;c++){
+          if(idx>=sources.length) break;
+          rowH = Math.max(rowH, heights[idx]);
+          idx++;
+        }
+        outHcss += rowH + gap;
+      }
+      outHcss += px;
+
+      // placements
+      idx=0;
+      y = headerH + px;
+      for(let r=0;r<rows;r++){
+        let rowH = 0;
+        for(let c=0;c<cols;c++){
+          if(idx>=sources.length) break;
+          const h = heights[idx];
+          rowH = Math.max(rowH, h);
+          const x = px + c*(cellW + gap);
+          placements.push({src: sources[idx], x, y, w: cellW, h});
+          idx++;
+        }
+        y += rowH + gap;
+      }
+
+    } else {
+      const src = sources[0];
+      const w0 = src.getBoundingClientRect().width || src.width;
+      const h0 = src.getBoundingClientRect().height || src.height;
+      const k = w0 ? (wCss / w0) : 1;
+      const hCss = Math.floor(h0 * k);
+      outHcss = headerH + px + hCss + px;
+      placements = [{src, x: px, y: headerH + px, w: wCss, h: hCss}];
     }
 
-    // In Focus -> export composite with photos
-    try{
-      if(_isFocus){
-        const out = await buildCompositeFocus();
-        dl(out, safe(`focus_${mode}_${stamp}`));
-        return;
-      }
-      if($sheetPop && $sheetPop.style.display !== 'none'){
-        const out = await buildCompositeSheet();
-        dl(out, safe(`fiche_${mode}_${stamp}`));
-        return;
-      }
-    }catch(e){ console.warn(e); }
+    // create export canvas in device pixels
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(outWcss * scale);
+    canvas.height = Math.floor(outHcss * scale);
+    const ctx = canvas.getContext("2d");
 
-    if(mode==='radar'){
-      try{ const out = await buildCompositeRadar(); dl(out, safe(`kiviat_${stamp}`)); return; }catch(e){ console.warn(e); }
+    // background
+    ctx.fillStyle = spec.bg || "#081423";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // header (draw in device pixels)
+    drawExportHeader(ctx, Math.floor(outWcss * scale), Math.floor(headerH * scale), spec.header, scale);
+
+    // draw sources
+    for(const p of placements){
+      const dx = Math.floor(p.x * scale);
+      const dy = Math.floor(p.y * scale);
+      const dw = Math.floor(p.w * scale);
+      const dh = Math.floor(p.h * scale);
+      ctx.drawImage(p.src, dx, dy, dw, dh);
     }
 
-    dl($canvas, safe(`graph_${mode}_${stamp}`));
-  });
+    return {canvas};
+  }
+
+  function drawExportHeader(ctx, W, H, header, scale){
+    ctx.save();
+    const s = scale || 1;
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = `600 ${Math.floor(30*s)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.fillText(header?.title || "Export", Math.floor(24*s), Math.floor(44*s));
+
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    ctx.font = `500 ${Math.floor(18*s)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.fillText(header?.subtitle || "", Math.floor(24*s), Math.floor(74*s));
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = `600 ${Math.floor(20*s)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    const a = header?.a || "—";
+    const b = header?.b;
+    const txt = b ? `${a}  vs  ${b}` : a;
+    ctx.fillText(txt, Math.floor(24*s), Math.floor(104*s));
+
+    ctx.restore();
+  }
+
+  async function downloadCanvasAsPNG(canvas, filename){
+    return new Promise((resolve) => {
+      canvas.toBlob((blob)=>{
+        if(!blob){ resolve(); return; }
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || "export.png";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(()=>URL.revokeObjectURL(url), 2000);
+        resolve();
+      }, "image/png");
+    });
+  }
+
+
+$exportBtn.addEventListener('click', ()=>{ exportPNG().catch(console.error); });
 
   setMetricOptions();
   load().then(()=>{

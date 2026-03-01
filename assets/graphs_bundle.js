@@ -164,7 +164,7 @@
 
 /* Image */
 .g-avatar img{
-  width: 100%;
+  width: 80%;
   height: 100%;
   object-fit: cover;
   object-position: 50% 1%;  /* ajuste: -2% à -8% selon tes avatars */

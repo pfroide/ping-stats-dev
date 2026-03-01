@@ -2013,7 +2013,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
     $focusHdr.style.display = 'block';
-
+    if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
+	
     const scopeSel = ($scope && $scope.value) ? $scope.value : 'tous';
     const phaseSel = normPhase(($phase && $phase.value) ? $phase.value : 'all');
 
@@ -2029,9 +2030,11 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
     function subText(lic){
-      const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel);
-      const s = _summaryFromRows(rows);
-      return `${s.matches} matchs · ${s.wins} V · ${s.losses} D`;
+      const s = summaryForSelection(lic, scopeSel, phaseSel) || {};
+      const m = Number(s.matches || 0);
+      const w = Number(s.wins || 0);
+      const l = Number(s.losses || 0);
+      return `${m} matchs · ${w} V · ${l} D`;	  
     }
     if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
     if($focusSubB) $focusSubB.textContent = (hasB && bLic) ? subText(bLic) : '';

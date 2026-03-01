@@ -1976,6 +1976,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
 
   
   
+  
   function updateFocusHeader(aLic, bLic){
     if(!$focusHdr) return;
     if(!_isFocus){ $focusHdr.style.display = 'none'; return; }
@@ -1996,8 +1997,8 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusNameB) $focusNameB.textContent = pb ? (pb.name || bLic) : (bLic || '—');
 
     function subText(lic){
-      const rows = _filteredRowsForSelection(lic, scopeSel, phaseSel);
-      const s = _summaryFromRows(rows);
+      if(!lic) return '';
+      const s = summaryForSelection(lic, scopeSel, phaseSel);
       return `${s.matches} matchs · ${s.wins} V · ${s.losses} D`;
     }
     if($focusSubA) $focusSubA.textContent = aLic ? subText(aLic) : '';
@@ -2008,6 +2009,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     if($focusAvatarB) setImgWithFallback($focusAvatarB, bLic);
     if($focusBgB) setImgWithFallback($focusBgB, bLic);
   }
+
 
 
 async function render(opts){

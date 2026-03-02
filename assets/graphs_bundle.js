@@ -877,6 +877,20 @@ function openSheetFor(lic){
   $sheetBtn.addEventListener('click', async ()=>{
     const lic = (selected && selected.length ? selected[0] : $player.value) || '';
     if(!lic) return;
+
+    // Prefer the global Player Modal from the main site (same as Scoreboards click),
+    // but hide images as requested.
+    try{
+      const fn = (typeof window !== 'undefined') ? window.openPlayer : null;
+      if(typeof fn === 'function'){
+        const nm = (PLAYER_INDEX && PLAYER_INDEX[lic] && PLAYER_INDEX[lic].name) ? PLAYER_INDEX[lic].name : (lic||'');
+        const label = (nm && /\(\s*\d+\s*\)\s*$/.test(nm)) ? nm : `${nm || lic} (${lic})`;
+        fn(label, {hideImages:true});
+        return;
+      }
+    }catch(e){}
+
+    // Fallback: legacy in-bundle sheet popup.
     await ensurePlayer(lic);
     openSheetFor(lic);
   });

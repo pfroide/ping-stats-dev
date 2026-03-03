@@ -119,6 +119,9 @@
       #gModeRow .g-btn{ flex:1 1 48%; }
       #gRow3 .g-select{ flex:1 1 48%; }
       #gRow3 .g-btn{ flex:1 1 48%; }
+    
+      #gRow4 .g-pill{ flex:1 1 48%; }
+      #gRow4 .g-btn{ flex:1 1 48%; }
     }
 
     @media (max-width: 560px){
@@ -255,8 +258,6 @@ root.appendChild(style);
           <option value="charts">Affichage: graphiques</option>
           <option value="tables">Affichage: tableaux</option>
         </select>
-        <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
-        <button id="gSheet" class="g-btn" type="button">Fiche</button>
       </div>
 
       <div class="g-focushdr" id="gFocusHdr" style="display:none">
@@ -300,13 +301,14 @@ root.appendChild(style);
             <option value="1">Phase 1</option>
             <option value="2">Phase 2</option>
           </select>
+          <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
+          <button id="gExport" class="g-btn" type="button">Export PNG</button>
         </div>
 
         <div class="g-row" id="gRow4">
           <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
           <button id="gSheet" class="g-btn" type="button">Fiche</button>
-          <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
-          <button id="gExport" class="g-btn" type="button">Export PNG</button>
+
           <label class="g-pill" style="cursor:default"><input id="gCtxBetter" type="checkbox"/><small>vs mieux classés</small></label>
           <label class="g-pill" style="cursor:default"><input id="gCtxWorse" type="checkbox"/><small>vs moins classés</small></label>
           <label class="g-pill" style="cursor:default"><input id="gCtxClose" type="checkbox"/><small>matchs serrés</small></label>
@@ -879,20 +881,6 @@ function openSheetFor(lic){
   $sheetBtn.addEventListener('click', async ()=>{
     const lic = (selected && selected.length ? selected[0] : $player.value) || '';
     if(!lic) return;
-
-    // Prefer the global Player Modal from the main site (same as Scoreboards click),
-    // but hide images as requested.
-    try{
-      const fn = (typeof window !== 'undefined') ? window.openPlayer : null;
-      if(typeof fn === 'function'){
-        const nm = (PLAYER_INDEX && PLAYER_INDEX[lic] && PLAYER_INDEX[lic].name) ? PLAYER_INDEX[lic].name : (lic||'');
-        const label = (nm && /\(\s*\d+\s*\)\s*$/.test(nm)) ? nm : `${nm || lic} (${lic})`;
-        fn(label, {hideImages:true});
-        return;
-      }
-    }catch(e){}
-
-    // Fallback: legacy in-bundle sheet popup.
     await ensurePlayer(lic);
     openSheetFor(lic);
   });
@@ -1899,8 +1887,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxClose  = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      const ph = normPhase(phase);
-	  if(!(ph==='all' || normPhase(x.phase)===ph)) return false;
+      if(!(phase==='all' || (''+x.phase)==phase)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;
@@ -2037,8 +2024,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
     const ctxClose = $ctxClose && $ctxClose.checked;
     const wantAllRel = (!ctxBetter && !ctxWorse) || (ctxBetter && ctxWorse);
     const keepRow = (x)=>{
-      const ph = normPhase(phase);
-	  if(!(ph==='all' || normPhase(x.phase)===ph)) return false;
+      if(!(phase==='all' || (''+x.phase)==phase)) return false;
       const d = Number(x.diff_pts||0);
       if(!wantAllRel){
         if(ctxBetter && !(d < 0)) return false;

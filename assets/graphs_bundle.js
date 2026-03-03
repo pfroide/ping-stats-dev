@@ -255,6 +255,8 @@ root.appendChild(style);
           <option value="charts">Affichage: graphiques</option>
           <option value="tables">Affichage: tableaux</option>
         </select>
+        <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
+        <button id="gSheet" class="g-btn" type="button">Fiche</button>
       </div>
 
       <div class="g-focushdr" id="gFocusHdr" style="display:none">
@@ -298,13 +300,13 @@ root.appendChild(style);
             <option value="1">Phase 1</option>
             <option value="2">Phase 2</option>
           </select>
-          <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
-          <button id="gExport" class="g-btn" type="button">Export PNG</button>
         </div>
 
         <div class="g-row" id="gRow4">
           <button id="gFocus" class="g-btn" type="button">⤢ Focus</button>
           <button id="gSheet" class="g-btn" type="button">Fiche</button>
+          <button id="gClearPlayers" class="g-btn" type="button">Vider</button>
+          <button id="gExport" class="g-btn" type="button">Export PNG</button>
           <label class="g-pill" style="cursor:default"><input id="gCtxBetter" type="checkbox"/><small>vs mieux classés</small></label>
           <label class="g-pill" style="cursor:default"><input id="gCtxWorse" type="checkbox"/><small>vs moins classés</small></label>
           <label class="g-pill" style="cursor:default"><input id="gCtxClose" type="checkbox"/><small>matchs serrés</small></label>

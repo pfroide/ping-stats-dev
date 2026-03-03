@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <link rel="manifest" href="./manifest.webmanifest"/>
 <meta name="theme-color" content="#0b0e14"/>
-<meta name="build-id" content="20260303220942"/>
+<meta name="build-id" content="20260303222607"/>
 <link rel="icon" href="./assets/icons/icon-192.png"/>
 <link rel="apple-touch-icon" href="./assets/icons/icon-180.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -329,7 +329,7 @@ th.sortable[data-dir="desc"]::after{content:" ▼";color:var(--muted);font-size:
 <body>
   <div class="header">
     <div class="h1">8940866 • Mobile</div>
-    <div class="h2">Export mobile • 2026-03-03 22:09</div>
+    <div class="h2">Export mobile • 2026-03-03 22:26</div>
     <div class="tabs"><button class="tab-btn" type="button" data-tab="mensuel">Mensuel</button><button class="tab-btn" type="button" data-tab="blocs">Blocs</button><button class="tab-btn" type="button" data-tab="scoreboards">Scoreboards</button><button class="tab-btn" type="button" data-tab="graphiques">Duels</button></div>
   </div>
   <div class="container">
@@ -6472,14 +6472,30 @@ P" data-col-idx="8">2</td></tr></tbody>
       }
     }
   }
-  function activateSub(group, id){
-    const btns = [...document.querySelectorAll(`.subtab-btn[data-group="${group}"]`)];
-    const pans = [...document.querySelectorAll(`.subtab-panel[data-group="${group}"]`)];
-    btns.forEach(b=>b.classList.toggle('active', b.dataset.subtab===id));
-    pans.forEach(p=>p.classList.toggle('active', p.dataset.subtab===id));
-    ensurePanelContent(group, id);
-    try{localStorage.setItem(`ping_subtab_${group}`, id);}catch(e){}
-  }
+    function activateSub(group, id){
+      const btns = [...document.querySelectorAll(`.subtab-btn[data-group="${group}"]`)];
+      const pans = [...document.querySelectorAll(`.subtab-panel[data-group="${group}"]`)];
+
+      // reset everything first (prevents double-visible panels)
+      btns.forEach(b=>b.classList.remove('active'));
+      pans.forEach(p=>{
+        p.classList.remove('active');
+        p.style.display = 'none';
+        p.setAttribute('aria-hidden','true');
+      });
+
+      // activate matching
+      btns.filter(b=>b.dataset.subtab===id).forEach(b=>b.classList.add('active'));
+      const activePans = pans.filter(p=>p.dataset.subtab===id);
+      activePans.forEach(p=>{
+        p.classList.add('active');
+        p.style.display = 'block';
+        p.setAttribute('aria-hidden','false');
+      });
+
+      ensurePanelContent(group, id);
+      try{localStorage.setItem(`ping_subtab_${group}`, id);}catch(e){}
+    }
   function initSubtabs(){
     const groups = new Set([...document.querySelectorAll('.subtab-btn[data-group]')].map(b=>b.dataset.group));
     groups.forEach(group=>{
@@ -6924,7 +6940,7 @@ function openPlayer(name, opts){
 // PWA: service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./service-worker.js?v=20260303220942');
+    navigator.serviceWorker.register('./service-worker.js?v=20260303222607');
   });
 }
 </script>

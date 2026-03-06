@@ -49,16 +49,16 @@
     .g-tip .g-muted{ color:rgba(154,164,178,0.95); }
     .g-legend{ display:flex; flex-wrap:wrap; gap:8px; width:100%; margin:8px 0 0; justify-content:center; }
 
-.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:hidden; }
-.g-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
-.g-table th,.g-table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; white-space:nowrap; }
-.g-table th{ position:sticky; top:0; background:rgba(12,18,30,0.92); backdrop-filter: blur(6px); text-align:left; z-index:2; }
-.g-table tr:hover td{ background:rgba(255,255,255,0.03); }
-.g-table .num{ text-align:right; font-variant-numeric: tabular-nums; }
+	.g-tablewrap{ width:100%; margin:10px 0 0; overflow-x:hidden; }
+	.g-table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+	.g-table th,.g-table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; white-space:nowrap; }
+	.g-table th{ position:sticky; top:0; background:rgba(12,18,30,0.92); backdrop-filter: blur(6px); text-align:left; z-index:2; }
+	.g-table tr:hover td{ background:rgba(255,255,255,0.03); }
+	.g-table .num{ text-align:right; font-variant-numeric: tabular-nums; }
 
-.g-table td.heat-pos{ background: rgba(40, 190, 90, 0.18); color: #41e48c; font-weight: 700; }
-.g-table td.heat-neg{ background: rgba(220, 60, 60, 0.18); color: #ff5a5a; font-weight: 700; }
-.g-table td.heat-neu{ background: rgba(240, 190, 40, 0.18); color: #ffd36a; font-weight: 700; }
+	.g-table td.heat-pos{ background: rgba(40, 190, 90, 0.18); color: #41e48c; font-weight: 700; }
+	.g-table td.heat-neg{ background: rgba(220, 60, 60, 0.18); color: #ff5a5a; font-weight: 700; }
+	.g-table td.heat-neu{ background: rgba(240, 190, 40, 0.18); color: #ffd36a; font-weight: 700; }
 @media (max-width: 520px){
   .g-table{ min-width:440px; }
   .g-table th,.g-table td{ padding:9px 10px; font-size:13px; }
@@ -137,17 +137,17 @@
     .g-card.g-focus .g-title{ margin-top:8px; }
     .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:62vh; }
     .g-card.g-focus .g-legend{ max-width:none; }
-.g-card.g-focus .g-grid{ max-width:1200px; margin:0 auto; }
-.g-card.g-focus .g-title,
-.g-card.g-focus .g-canvas,
-.g-card.g-focus .g-legend,
-.g-card.g-focus #gMulti,
-.g-card.g-focus #gCompareCards{ max-width:1200px; margin-left:auto; margin-right:auto; }
+	.g-card.g-focus .g-grid{ max-width:1200px; margin:0 auto; }
+	.g-card.g-focus .g-title,
+	.g-card.g-focus .g-canvas,
+	.g-card.g-focus .g-legend,
+	.g-card.g-focus #gMulti,
+	.g-card.g-focus #gCompareCards{ max-width:1200px; margin-left:auto; margin-right:auto; }
 
     /* Center + clamp mini-graphs container (prevents any overflow on narrow viewports). */
     #gMulti{ width:100%; max-width:980px; margin-left:auto; margin-right:auto; }
-.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
-    .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
+	.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(9,14,25,0.72); }
+    .g-focusbg{ display:none; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
     .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
@@ -170,7 +170,7 @@
       .g-focushdr-content{ flex-direction:column; gap:6px; padding:8px; }
       .g-fplayer{ min-width:0; width:100%; max-width:none; }
       .g-vs{ margin: -2px 0; }
-      .g-avatar{ width:48px; height:48px; }
+      .g-avatar{ width:48px; height:96px; }
       .g-sheet .sh-photo{ width:84px; height:112px; }
     }
   `;
@@ -325,7 +325,7 @@ root.appendChild(style);
 
       <div class="g-title" id="gTitle"></div>
       <div id="gTip" class="g-tip" style="display:none"></div>
-      <canvas id="gCanvas" class="g-canvas" width="980" height="420"></canvas>
+      <canvas id="gCanvas" class="g-canvas" width="980" height="220"></canvas>
       <div id="gLegend" class="g-legend"></div>
       <div id="gTableWrap" class="g-tablewrap" style="display:none"></div>
       <div id="gCompareCards" class="g-grid" style="display:none; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;"></div>
@@ -447,7 +447,7 @@ root.appendChild(style);
     const prevW = (canvas.__cw && isFinite(canvas.__cw) && canvas.__cw>0) ? canvas.__cw : 0;
     const prevH = (canvas.__ch && isFinite(canvas.__ch) && canvas.__ch>0) ? canvas.__ch : 0;
     const w = (rw>0 ? rw : (prevW>0 ? prevW : (minW||320)));
-    const h = (rh>0 ? rh : (prevH>0 ? prevH : (minH||240)));
+    const h = (rh>0 ? rh : (prevH>0 ? prevH : (minH || (window.innerWidth <= 560 ? 220 : 420))));
     const dpr = Math.max(1, (window.devicePixelRatio || 1));
     const pw = Math.max(1, Math.floor(w * dpr));
     const ph = Math.max(1, Math.floor(h * dpr));

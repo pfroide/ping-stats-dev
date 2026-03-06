@@ -146,7 +146,7 @@
 
     /* Center + clamp mini-graphs container (prevents any overflow on narrow viewports). */
     #gMulti{ width:100%; max-width:980px; margin-left:auto; margin-right:auto; }
-.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
+	.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(9,14,25,0.72); }
     .g-focusbg{ display:none; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }

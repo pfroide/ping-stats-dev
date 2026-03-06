@@ -100,7 +100,7 @@
     .g-sheet .matchlist table{ width:100%; }
 
     @media (max-width: 560px){
-      .g-canvas{ height:520px; }
+      .g-canvas{ height:340px; }
       .g-input,.g-select,.g-btn{ padding:12px 12px; font-size:14px; }
       .g-title{ font-size:15px; }
       .g-tip{ font:13px system-ui; padding:12px 12px; }
@@ -114,8 +114,8 @@
 
 
     @media (max-width: 560px){
-      #gControlsRow .g-select{ flex:1 1 100%; }
-      #gModeRow .g-select{ flex:1 1 48%; }
+      #gControlsRow .g-select{ flex:1 1 48%; }
+      #gModeRow .g-select{ flex:1 1 30%; }
       #gModeRow .g-btn{ flex:1 1 48%; }
       #gRow3 .g-select{ flex:1 1 48%; }
       #gRow3 .g-btn{ flex:1 1 48%; }
@@ -167,10 +167,10 @@
     .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
     .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     @media (max-width: 520px){
-      .g-focushdr-content{ flex-direction:column; gap:10px; padding:12px; }
+      .g-focushdr-content{ flex-direction:column; gap:6px; padding:8px; }
       .g-fplayer{ min-width:0; width:100%; max-width:none; }
       .g-vs{ margin: -2px 0; }
-      .g-avatar{ width:64px; height:64px; }
+      .g-avatar{ width:40px; height:80px; }
       .g-sheet .sh-photo{ width:84px; height:112px; }
     }
   `;

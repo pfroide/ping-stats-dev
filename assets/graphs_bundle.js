@@ -147,14 +147,14 @@
     /* Center + clamp mini-graphs container (prevents any overflow on narrow viewports). */
     #gMulti{ width:100%; max-width:980px; margin-left:auto; margin-right:auto; }
 .g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
-    .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
+    .g-focusbg{ display:none; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
-    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:top center; filter: blur(5px) brightness(0.55); opacity:0.7; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
-    .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    .g-avatar img{ width:80%; height:100%; object-fit:cover; object-position:50% 1%; }
+    .g-avatar{ width:75px; height:150px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
+    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:top center }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }

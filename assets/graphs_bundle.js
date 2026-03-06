@@ -100,7 +100,7 @@
     .g-sheet .matchlist table{ width:100%; }
 
     @media (max-width: 560px){
-      .g-canvas{ height:320px; }
+      .g-canvas{ height:220px; }
       .g-input,.g-select,.g-btn{ padding:10px 8px; font-size:13px; }
       .g-title{ font-size:15px; }
       .g-tip{ font:13px system-ui; padding:12px 12px; }
@@ -125,7 +125,7 @@
     }
 
     @media (max-width: 560px){
-      .g-card.g-focus .g-canvas{ height:52vh; }
+      .g-card.g-focus .g-canvas{ height:40vh; }
       .g-card.g-focus .g-legend{ padding-bottom:12px; }
     }
 

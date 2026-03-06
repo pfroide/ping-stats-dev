@@ -32,7 +32,7 @@
     .g-muted{ color:#9aa4b2; }
     .g-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .g-row > *{ min-width:0; }
-    .g-select{ flex: 1 1 220px; max-width:100%; }
+    .g-select{ flex: 1 1 180px; max-width:100%; min-width:0; }
     .g-btn{ flex: 0 0 auto; white-space:nowrap; }
     .g-input,.g-select{ padding:10px 12px; border-radius:12px; border:1px solid #263043; background:rgba(255,255,255,0.04); color:#e6e9ef; outline:none; }
     .g-btn{ padding:10px 12px; border-radius:12px; border:1px solid #263043; background:rgba(255,255,255,0.06); color:#e6e9ef; cursor:pointer; font-weight:700; }
@@ -100,8 +100,8 @@
     .g-sheet .matchlist table{ width:100%; }
 
     @media (max-width: 560px){
-      .g-canvas{ height:340px; }
-      .g-input,.g-select,.g-btn{ padding:12px 12px; font-size:14px; }
+      .g-canvas{ height:320px; }
+      .g-input,.g-select,.g-btn{ padding:10px 8px; font-size:13px; }
       .g-title{ font-size:15px; }
       .g-tip{ font:13px system-ui; padding:12px 12px; }
       /* mobile: keep filters visible (wrapping) */
@@ -114,11 +114,11 @@
 
 
     @media (max-width: 560px){
-      #gControlsRow .g-select{ flex:1 1 48%; }
-      #gModeRow .g-select{ flex:1 1 30%; }
+      #gControlsRow .g-select{ flex:1 1 48%; min-width:0; }
+      #gModeRow .g-select{ flex:1 1 30%; min-width:0; }
       #gModeRow .g-btn{ flex:1 1 48%; }
-      #gRow3 .g-select{ flex:1 1 48%; }
-      #gRow3 .g-btn{ flex:1 1 48%; }
+      #gRow3 .g-select{ flex:1 1 46%; min-width:0; }
+      #gRow3 .g-btn{ flex:1 1 46%; min-width:0; }
     
       #gRow4 .g-pill{ flex:1 1 48%; }
       #gRow4 .g-btn{ flex:1 1 48%; }
@@ -130,7 +130,7 @@
     }
 
     /* Focus mode (mobile-first fullscreen) */
-    .g-card{ overflow-x:hidden; }
+    .g-card{ overflow-x:hidden; width:100%; box-sizing:border-box; }
     .g-card.g-focus{ position:fixed; inset:0; z-index:9999; margin:0; border-radius:0; border:none; background:#0b1220; overflow-x:hidden; }
     .g-card.g-focus .g-row{ padding:4px 10px; }
     .g-card.g-focus .g-more{ display:none !important; }
@@ -146,15 +146,15 @@
 
     /* Center + clamp mini-graphs container (prevents any overflow on narrow viewports). */
     #gMulti{ width:100%; max-width:980px; margin-left:auto; margin-right:auto; }
-	.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(9,14,25,0.72); }
-    .g-focusbg{ display:none; }
+.g-focushdr{ position:relative; border:1px solid #263043; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.18); }
+    .g-focusbg{ position:absolute; top:0; bottom:0; width:50%; overflow:hidden; }
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
-    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:top center; filter: blur(5px) brightness(0.55); opacity:0.7; }
+    .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter: blur(10px) brightness(0.55); transform: scale(1.12); opacity:0.95; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.25); min-width:220px; max-width:360px; }
-    .g-avatar{ width:75px; height:150px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:top center }
+    .g-avatar{ width:72px; height:72px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
+    .g-avatar img{ width:80%; height:100%; object-fit:cover; object-position:50% 1%; }
     .g-fmeta{ min-width:0; }
     .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
@@ -170,7 +170,7 @@
       .g-focushdr-content{ flex-direction:column; gap:6px; padding:8px; }
       .g-fplayer{ min-width:0; width:100%; max-width:none; }
       .g-vs{ margin: -2px 0; }
-      .g-avatar{ width:40px; height:80px; }
+      .g-avatar{ width:48px; height:48px; }
       .g-sheet .sh-photo{ width:84px; height:112px; }
     }
   `;

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <link rel="manifest" href="./manifest.webmanifest"/>
 <meta name="theme-color" content="#0b0e14"/>
-<meta name="build-id" content="20260306180716"/>
+<meta name="build-id" content="20260306181443"/>
 <link rel="icon" href="./assets/icons/icon-192.png"/>
 <link rel="apple-touch-icon" href="./assets/icons/icon-180.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -341,7 +341,6 @@ th.sortable[data-dir="desc"]::after{content:" ▼";color:var(--muted);font-size:
 .player-hero{display:flex;align-items:center;gap:14px;padding:12px 12px 10px;border-bottom:1px solid var(--line)}
 .player-hero-photo{width:75px;height:150px;border-radius:14px;object-fit:cover;object-position:top center;border:2px solid rgba(255,255,255,.15);flex-shrink:0;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .player-hero-info{flex:1;min-width:0}
-/*.player-hero-name{font-size:16px;font-weight:900;line-height:1.2}*/
 .player-hero-sub{font-size:16px;color:var(--muted);margin-top:3px}
 
 /* ---- Sparkline ---- */
@@ -353,7 +352,7 @@ th.sortable[data-dir="desc"]::after{content:" ▼";color:var(--muted);font-size:
 <body>
   <div class="header">
     <div class="h1">8940866 • Mobile</div>
-    <div class="h2">Export mobile • 2026-03-06 18:07</div>
+    <div class="h2">Export mobile • 2026-03-06 18:14</div>
     <div class="tabs"><button class="tab-btn" type="button" data-tab="mensuel">Mensuel</button><button class="tab-btn" type="button" data-tab="blocs">Blocs</button><button class="tab-btn" type="button" data-tab="scoreboards">Scoreboards</button><button class="tab-btn" type="button" data-tab="graphiques">Duels</button></div>
   </div>
   <div class="container">
@@ -6940,7 +6939,7 @@ function openPlayer(name, opts){
 // PWA: service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./service-worker.js?v=20260306180716');
+    navigator.serviceWorker.register('./service-worker.js?v=20260306181443');
   });
 }
 </script>

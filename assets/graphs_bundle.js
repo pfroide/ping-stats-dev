@@ -151,8 +151,8 @@
     .g-focusbg.g-a{ left:0; }
     .g-focusbg.g-b{ right:0; }
     .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:top center; filter: blur(1px) brightness(0.55); transform: scale(1.12); opacity:0.75; }
-    .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
-    .g-fplayer{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); min-width:220px; max-width:360px; }
+    .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:4px; padding:12px 12px; min-height:120px; }
+    .g-fplayer{ display:flex 1 1 0; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); min-width:0px; max-width:360px; }
     .g-avatar{ width:48px; height:96px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }    
 	.g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:top center; }
     .g-fmeta{ min-width:0; }
@@ -172,7 +172,7 @@
 	  .g-focushdr-content{ flex-direction:row; gap:6px; padding:8px; flex-wrap:nowrap; }
 	  .g-fplayer{ min-width:0; width:calc(50% - 20px); max-width:none; flex-shrink:1; }
 	  .g-avatar{ width:48px; height:72px; }
-	  #gFocusCardA{ flex-direction:row-reverse !important; text-align:right; justify-content:flex-end; }
+	  #gFocusCardA{ flex-direction:flex-start !important; text-align:right; justify-content:flex-end; }
 	  #gFocusCardA .g-fmeta{ align-items:flex-end; display:flex; flex-direction:column; }
 	  #gFocusCardB{ flex-direction:row !important; text-align:left; }
 	  #gFocusCardB .g-fmeta{ align-items:flex-start; display:flex; flex-direction:column; }
@@ -883,12 +883,19 @@ function openSheetFor(lic){
   });
 
   // Player sheet (1 screen)
-  $sheetBtn.addEventListener('click', async ()=>{
-    const lic = (selected && selected.length ? selected[0] : $player.value) || '';
-    if(!lic) return;
-    await ensurePlayer(lic);
-    openSheetFor(lic);
-  });
+	$sheetBtn.addEventListener('click', async ()=>{
+		const lic = (selected && selected.length ? selected[0] : $player.value) || '';
+		if(!lic) return;
+		const p = PLAYERS[lic];
+		const name = (p && p.name) ? p.name : lic;
+		// Utilise la modal joueur du site si disponible
+		if(typeof window.openPlayer === 'function'){
+			window.openPlayer(name);
+		} else {
+			await ensurePlayer(lic);
+			openSheetFor(lic);
+		}
+	});
   $sheetClose.addEventListener('click', ()=> closeSheet());
   $sheetPop.addEventListener('click', (e)=>{
     // click outside box closes

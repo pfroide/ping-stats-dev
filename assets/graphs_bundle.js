@@ -889,8 +889,11 @@ function openSheetFor(lic){
 		const p = PLAYERS[lic];
 		const name = (p && p.name) ? p.name : lic;
 		// Utilise la modal joueur du site si disponible
-		if(typeof window.openPlayer === 'function'){
+		if(typeof window.openPlayerByLic === 'function'){
+			window.openPlayerByLic(lic);
+		} else if(typeof window.openPlayer === 'function'){
 			window.openPlayer(name);
+		}
 		} else {
 			await ensurePlayer(lic);
 			openSheetFor(lic);

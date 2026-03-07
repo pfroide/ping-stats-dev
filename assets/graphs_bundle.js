@@ -156,7 +156,7 @@
     .g-avatar{ width:48px; height:96px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
     .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:top center; }
     .g-fmeta{ min-width:0; }
-    .g-fname{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .g-fname{ font-weight:800; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
     .g-vs{ font-weight:900; letter-spacing:1px; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.30); border:1px solid rgba(255,255,255,0.08); }
     .g-x{ position:absolute; top:10px; right:10px; width:36px; height:36px; border-radius:12px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.08); color:#e9eef8; cursor:pointer; }
@@ -167,8 +167,8 @@
     .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
     .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
     @media (max-width: 520px){
-      .g-focushdr-content{ flex-direction:column; gap:6px; padding:8px; }
-      .g-fplayer{ min-width:0; width:100%; max-width:none; }
+      .g-focushdr-content{ flex-direction:row; gap:6px; padding:8px; flex-wrap:nowrap; }
+      .g-fplayer{ min-width:0; width:calc(50% - 20px); max-width:none; flex-shrink:1; }
       .g-vs{ margin: -2px 0; }
       .g-avatar{ width:48px; height:96px; }
       .g-sheet .sh-photo{ width:84px; height:112px; }

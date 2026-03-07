@@ -159,7 +159,7 @@
 	#gFocusCardA{ flex-direction:row-reverse !important; text-align:right; justify-content:flex-end; }
 	#gFocusCardA .g-fmeta{ align-items:flex-end; display:flex; flex-direction:column; }
 	.g-fname{ font-weight:800; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
+    .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; white-space:pre-line; }
     .g-vs{ font-weight:900; letter-spacing:1px; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.30); border:1px solid rgba(255,255,255,0.08); }
     .g-x{ position:absolute; top:10px; right:10px; width:36px; height:36px; border-radius:12px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.08); color:#e9eef8; cursor:pointer; }
     .g-x:hover{ background:rgba(0,0,0,0.44); }
@@ -2080,7 +2080,7 @@ function drawCoverBias(c, img, x, y, w, h, biasY){
       const phaseSel = normPhase(($phase && $phase.value) ? $phase.value : 'all');
       const s = summaryForSelection(lic, scopeSel, phaseSel) || {};
       const m = Number(s.matches||0), w = Number(s.wins||0), l = Number(s.losses||0);
-      return `${m} matchs · ${w} V · ${l} D`;
+      return `${m} matchs\n${w} V · ${l} D`;
     }
     if($focusSubA) $focusSubA.textContent = pa ? subText(pa, aLic) : '';
     if($focusSubB) $focusSubB.textContent = pb ? subText(pb, bLic) : '';

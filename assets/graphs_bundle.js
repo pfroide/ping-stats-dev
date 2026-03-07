@@ -168,12 +168,15 @@
     .g-sheet .sh-left{ display:flex; align-items:flex-start; gap:12px; min-width:0; }
     .g-sheet .sh-photo{ width:96px; height:128px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); flex:0 0 auto; }
     .g-sheet .sh-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 18%; }
-    @media (max-width: 520px){
-      .g-focushdr-content{ flex-direction:row; gap:6px; padding:8px; flex-wrap:nowrap; }
-      .g-fplayer{ min-width:0; width:calc(50% - 20px); max-width:none; flex-shrink:1; }
-      .g-vs{ margin: -2px 0; }
-      .g-avatar{ width:48px; height:96px; }
-      .g-sheet .sh-photo{ width:84px; height:112px; }
+	@media (max-width: 520px){
+	  .g-focushdr-content{ flex-direction:row; gap:6px; padding:8px; flex-wrap:nowrap; }
+	  .g-fplayer{ min-width:0; width:calc(50% - 20px); max-width:none; flex-shrink:1; }
+	  .g-avatar{ width:48px; height:72px; }
+	  #gFocusCardA{ flex-direction:row-reverse !important; text-align:right; justify-content:flex-end; }
+	  #gFocusCardA .g-fmeta{ align-items:flex-end; display:flex; flex-direction:column; }
+	  #gFocusCardB{ flex-direction:row !important; text-align:left; }
+	  #gFocusCardB .g-fmeta{ align-items:flex-start; display:flex; flex-direction:column; }
+}
     }
   `;
   

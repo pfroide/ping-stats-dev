@@ -894,7 +894,7 @@ function openSheetFor(lic){
 		} else if(typeof window.openPlayer === 'function'){
 			window.openPlayer(name);
 		}
-		} else {
+		else {
 			await ensurePlayer(lic);
 			openSheetFor(lic);
 		}

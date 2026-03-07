@@ -135,14 +135,14 @@
     .g-card.g-focus .g-row{ padding:4px 10px; }
     .g-card.g-focus .g-more{ display:none !important; }
     .g-card.g-focus .g-title{ margin-top:8px; }
-    .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:62vh; }
+    .g-card.g-focus .g-canvas{ max-width:none; border-radius:14px; height:40vh; }
     .g-card.g-focus .g-legend{ max-width:none; }
 	.g-card.g-focus .g-grid{ max-width:1200px; margin:0 auto; }
 	.g-card.g-focus .g-title,
 	.g-card.g-focus .g-canvas,
 	.g-card.g-focus .g-legend,
 	.g-card.g-focus #gMulti,
-	.g-card.g-focus #gCompareCards{ max-width:1200px; margin-left:auto; margin-right:auto; }
+	.g-card.g-focus #gCompareCards{ max-width:100%; margin-left:0; margin-right:0; }
 
     /* Center + clamp mini-graphs container (prevents any overflow on narrow viewports). */
     #gMulti{ width:100%; max-width:980px; margin-left:auto; margin-right:auto; }

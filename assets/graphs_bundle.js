@@ -153,7 +153,7 @@
     .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:top center; filter: blur(1px) brightness(0.55); transform: scale(1.12); opacity:0.75; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); min-width:220px; max-width:360px; }
-	#gFocusCardA{ flex-direction:row-reverse; text-align:right; }
+	#gFocusCardA{ flex-direction:row-reverse !important; text-align:right; justify-content:flex-end; }
 	#gFocusCardA .g-fmeta{ align-items:flex-end; display:flex; flex-direction:column; }
     .g-avatar{ width:48px; height:96px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
     .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:top center; }

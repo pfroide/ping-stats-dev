@@ -153,12 +153,12 @@
     .g-focusbg img{ width:100%; height:100%; object-fit:cover; object-position:top center; filter: blur(1px) brightness(0.55); transform: scale(1.12); opacity:0.75; }
     .g-focushdr-content{ position:relative; display:flex; align-items:center; justify-content:center; gap:14px; padding:12px 12px; min-height:120px; }
     .g-fplayer{ padding:10px 12px; border-radius:14px; background:rgba(9,14,25,0.72); min-width:220px; max-width:360px; }
+    .g-avatar{ width:48px; height:96px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }    
+	.g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:top center; }
+    .g-fmeta{ min-width:0; }
 	#gFocusCardA{ flex-direction:row-reverse !important; text-align:right; justify-content:flex-end; }
 	#gFocusCardA .g-fmeta{ align-items:flex-end; display:flex; flex-direction:column; }
-    .g-avatar{ width:48px; height:96px; border-radius:18px; overflow:hidden; flex:0 0 auto; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.18); }
-    .g-avatar img{ width:100%; height:100%; object-fit:cover; object-position:top center; }
-    .g-fmeta{ min-width:0; }
-    .g-fname{ font-weight:800; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+	.g-fname{ font-weight:800; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .g-fsub{ font-size:12px; color: rgba(255,255,255,0.75); margin-top:2px; }
     .g-vs{ font-weight:900; letter-spacing:1px; padding:6px 10px; border-radius:999px; background:rgba(0,0,0,0.30); border:1px solid rgba(255,255,255,0.08); }
     .g-x{ position:absolute; top:10px; right:10px; width:36px; height:36px; border-radius:12px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.08); color:#e9eef8; cursor:pointer; }

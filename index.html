@@ -6695,7 +6695,7 @@ P" data-col-idx="8">2</td></tr></tbody>
 
   <!-- Image Modal -->
   <div id="imgModal" class="imgmodal" aria-hidden="true">
-    <div class="imgmodal-card" role="dialog" aria-modal="true">
+    <div class="imgmodal-card" role="dialog" aria-modal="true" aria-labelledby="imgModalTitle">
       <div class="imgmodal-h">
         <div id="imgModalTitle" class="imgmodal-title"></div>
         <div class="imgmodal-actions">
@@ -6712,7 +6712,7 @@ P" data-col-idx="8">2</td></tr></tbody>
 
   <!-- Player Modal -->
   <div id="playerModal" class="playermodal" aria-hidden="true">
-    <div class="playermodal-card" role="dialog" aria-modal="true">
+    <div class="playermodal-card" role="dialog" aria-modal="true" aria-labelledby="playerModalTitle">
       <div class="playermodal-h">
         <div id="playerModalTitle" class="playermodal-title"></div>
         <div class="imgmodal-actions">
@@ -7028,9 +7028,11 @@ document.addEventListener('click', (e)=>{
     modalImg.alt = title||'';
     setScale(1.0);
     modal.classList.add('show');
+    modal.removeAttribute('aria-hidden');
   }
   function closeImg(){
     modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
     modalImg.src = '';
   }
 
@@ -7068,7 +7070,7 @@ function showPlayerChooser(name, keys, context){
   pTitle.textContent = (context==='blocs') ? '' : (name || 'Joueur');
   pBody.innerHTML = `<div class="muted" style="margin-bottom:10px">Plusieurs joueurs correspondent :</div><div>${btns}</div>`;
   initSubtabs();
-  pModal.classList.add('show');
+  pModal.classList.add('show'); pModal.removeAttribute('aria-hidden');
 }
 
 function openPlayer(name, opts){
@@ -7111,11 +7113,12 @@ function openPlayer(name, opts){
   if(!key){
     pTitle.textContent = (context==='blocs') ? '' : (name || 'Joueur');
     pBody.innerHTML = `<div class="muted">Aucune fiche complète trouvée pour ce joueur.</div>`;
-    pModal.classList.add('show');
+    pModal.classList.add('show'); pModal.removeAttribute('aria-hidden');
     return;
   }
 
   pTitle.textContent = (context==='blocs') ? '' : key;
+  // playerData contient du HTML pré-rendu généré au build (source statique de confiance)
   pBody.innerHTML = playerData[key] || '';
 
   // Blocs: fiche plus compacte (pas de champs de recherche)
@@ -7124,10 +7127,11 @@ function openPlayer(name, opts){
   }
 
   initSubtabs();
-  pModal.classList.add('show');
+  pModal.classList.add('show'); pModal.removeAttribute('aria-hidden');
 }
   function closePlayer(){
     pModal.classList.remove('show');
+    pModal.setAttribute('aria-hidden', 'true');
     pBody.innerHTML = '';
   }
 
@@ -7183,7 +7187,7 @@ function openPlayer(name, opts){
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "ac-item";
-      btn.innerHTML = `<div>${esc(it.key)}</div>`;
+      btn.textContent = it.key;
       btn.addEventListener("click", ()=>{
         listEl.style.display = "none";
         openPlayer(it.key);
